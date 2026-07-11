@@ -10,6 +10,9 @@ import {
 } from "react";
 import dynamic from "next/dynamic";
 import type { RenderedPage } from "@/lib/pdf";
+import type { Hotspot, MenuItem } from "@/lib/menu";
+import { useCart } from "@/lib/cart";
+import CartUI from "@/components/CartUI";
 
 // react-pageflip touches `window` on import → load client-side only.
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false });
@@ -18,17 +21,48 @@ interface FlipbookViewerProps {
   pages: RenderedPage[];
   aspect: number;
   title?: string;
-  file?: File | null;
+  /** original PDF URL, used by the download button */
+  pdfUrl?: string;
   onReset: () => void;
+  /** hotspots grouped by 1-based page number */
+  hotspotsByPage: Record<number, Hotspot[]>;
+  itemsById: Record<string, MenuItem>;
+  currencySymbol: string;
 }
 
-/** A single flippable page. react-pageflip requires each page to forward its ref. */
+/** A single flippable page with its clickable item hotspots overlaid. */
 const Page = forwardRef<
   HTMLDivElement,
-  { src: string; number: number; side: "left" | "right" }
->(({ src, number, side }, ref) => (
+  {
+    src: string;
+    number: number;
+    side: "left" | "right";
+    hotspots: Hotspot[];
+    showHotspots: boolean;
+    onSelect: (itemId: string) => void;
+  }
+>(({ src, number, side, hotspots, showHotspots, onSelect }, ref) => (
   <div className={`flip-page flip-page--${side}`} ref={ref}>
     <img src={src} alt={`Page ${number}`} draggable={false} />
+    {/* Item hotspots — positioned as a fraction of the page box. */}
+    {hotspots.map((h) => (
+      <button
+        key={h.id}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(h.itemId);
+        }}
+        aria-label="Add item to cart"
+        className={`hotspot ${showHotspots ? "hotspot--visible" : ""}`}
+        style={{
+          left: `${h.rect.x * 100}%`,
+          top: `${h.rect.y * 100}%`,
+          width: `${h.rect.w * 100}%`,
+          height: `${h.rect.h * 100}%`,
+        }}
+      />
+    ))}
   </div>
 ));
 Page.displayName = "Page";
@@ -37,8 +71,11 @@ export default function FlipbookViewer({
   pages,
   aspect,
   title,
-  file,
+  pdfUrl,
   onReset,
+  hotspotsByPage,
+  itemsById,
+  currencySymbol,
 }: FlipbookViewerProps) {
   const bookRef = useRef<any>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -50,9 +87,25 @@ export default function FlipbookViewer({
   const [soundOn, setSoundOn] = useState(true);
   const [portrait, setPortrait] = useState(false);
   const [dims, setDims] = useState({ width: 460, height: 650 });
+  const [showHotspots, setShowHotspots] = useState(false);
+  const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
+
+  const { add } = useCart();
 
   const total = pages.length;
   const onCover = current <= 0;
+  const hotspotCount = useMemo(
+    () => Object.values(hotspotsByPage).reduce((n, hs) => n + hs.length, 0),
+    [hotspotsByPage]
+  );
+
+  const selectItem = useCallback(
+    (itemId: string) => {
+      const item = itemsById[itemId];
+      if (item) setActiveItem(item);
+    },
+    [itemsById]
+  );
 
   // Single-page (portrait) only on narrow screens; desktop always shows a spread.
   useEffect(() => {
@@ -102,6 +155,7 @@ export default function FlipbookViewer({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") flipNext();
       else if (e.key === "ArrowLeft") flipPrev();
+      else if (e.key === "Escape") setActiveItem(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -125,7 +179,7 @@ export default function FlipbookViewer({
       setCurrent(e.data);
       playFlipSound();
     },
-    [playFlipSound],
+    [playFlipSound]
   );
 
   // ---- Zoom ----
@@ -147,15 +201,15 @@ export default function FlipbookViewer({
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
-  // ---- Download original PDF ----
+  // ---- Download / open original PDF ----
   const download = () => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
+    if (!pdfUrl) return;
     const a = document.createElement("a");
-    a.href = url;
-    a.download = file.name || "document.pdf";
+    a.href = pdfUrl;
+    a.download = `${title || "menu"}.pdf`;
+    a.target = "_blank";
+    a.rel = "noopener";
     a.click();
-    URL.revokeObjectURL(url);
   };
 
   const counter = useMemo(() => {
@@ -184,6 +238,13 @@ export default function FlipbookViewer({
       {/* Top-right toolbar */}
       <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
         <ToolButton
+          label={showHotspots ? "Hide item areas" : "Show item areas"}
+          onClick={() => setShowHotspots((s) => !s)}
+          active={showHotspots}
+        >
+          <IconTag />
+        </ToolButton>
+        <ToolButton
           label={soundOn ? "Mute" : "Unmute"}
           onClick={() => setSoundOn((s) => !s)}
           active={soundOn}
@@ -193,7 +254,7 @@ export default function FlipbookViewer({
         <ToolButton label="Fullscreen" onClick={toggleFullscreen}>
           {isFullscreen ? <IconExitFullscreen /> : <IconFullscreen />}
         </ToolButton>
-        <ToolButton label="Download PDF" onClick={download} disabled={!file}>
+        <ToolButton label="Download PDF" onClick={download} disabled={!pdfUrl}>
           <IconDownload />
         </ToolButton>
       </div>
@@ -230,13 +291,12 @@ export default function FlipbookViewer({
               maxShadowOpacity={0.35}
               showCover
               flippingTime={900}
-              showPageCorners
-              useMouseEvents
-              clickEventForward
+              showPageCorners={false}
+              useMouseEvents={false}
+              clickEventForward={false}
               swipeDistance={20}
               usePortrait={portrait}
               mobileScrollSupport
-              // className={`shadow-book ${onCover ? "book--cover" : ""}`}
               onFlip={onFlip}
             >
               {pages.map((p, i) => (
@@ -245,6 +305,9 @@ export default function FlipbookViewer({
                   src={p.src}
                   number={i + 1}
                   side={i % 2 === 0 ? "right" : "left"}
+                  hotspots={hotspotsByPage[i + 1] ?? []}
+                  showHotspots={showHotspots}
+                  onSelect={selectItem}
                 />
               ))}
             </HTMLFlipBook>
@@ -294,9 +357,91 @@ export default function FlipbookViewer({
 
       {title && (
         <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 truncate text-[11px] text-slate-400">
-          {title}
+          {title} · {hotspotCount} items detected
         </span>
       )}
+
+      {/* Item popup */}
+      {activeItem && (
+        <ItemPopup
+          item={activeItem}
+          currencySymbol={currencySymbol}
+          onClose={() => setActiveItem(null)}
+          onAdd={(qty) => {
+            add(activeItem, qty);
+            setActiveItem(null);
+          }}
+        />
+      )}
+
+      {/* Cart */}
+      <CartUI currencySymbol={currencySymbol} />
+    </div>
+  );
+}
+
+/* ---------- item popup ---------- */
+
+function ItemPopup({
+  item,
+  currencySymbol,
+  onClose,
+  onAdd,
+}: {
+  item: MenuItem;
+  currencySymbol: string;
+  onClose: () => void;
+  onAdd: (qty: number) => void;
+}) {
+  const [qty, setQty] = useState(1);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-sm rounded-t-2xl bg-white p-5 text-slate-800 shadow-2xl sm:rounded-2xl">
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+        >
+          ✕
+        </button>
+        <h3 className="pr-8 text-lg font-semibold">{item.name}</h3>
+        {item.description && (
+          <p className="mt-1 text-sm text-slate-500">{item.description}</p>
+        )}
+        <p className="mt-2 text-xl font-bold text-indigo-600">
+          {currencySymbol}
+          {item.price.toFixed(2)}
+        </p>
+
+        <div className="mt-5 flex items-center gap-3">
+          <div className="flex items-center rounded-lg border border-slate-200">
+            <button
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              className="flex h-10 w-10 items-center justify-center text-xl text-slate-600 hover:bg-slate-50"
+            >
+              −
+            </button>
+            <span className="w-8 text-center tabular-nums">{qty}</span>
+            <button
+              onClick={() => setQty((q) => q + 1)}
+              className="flex h-10 w-10 items-center justify-center text-xl text-slate-600 hover:bg-slate-50"
+            >
+              +
+            </button>
+          </div>
+          <button
+            onClick={() => onAdd(qty)}
+            className="flex-1 rounded-xl bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-500"
+          >
+            Add · {currencySymbol}
+            {(item.price * qty).toFixed(2)}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -395,5 +540,11 @@ const IconSoundOff = () => (
   <svg {...iconProps}>
     <path d="M11 5 6 9H3v6h3l5 4V5Z" />
     <path d="m22 9-6 6m0-6 6 6" />
+  </svg>
+);
+const IconTag = () => (
+  <svg {...iconProps}>
+    <path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82Z" />
+    <circle cx="7.5" cy="7.5" r="1.5" />
   </svg>
 );

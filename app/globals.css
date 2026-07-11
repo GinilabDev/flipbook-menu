@@ -34,6 +34,28 @@ body {
   pointer-events: none;
 }
 
+/* Clickable item region overlaid on a page. Invisible by default; a soft
+   highlight on hover, and a visible outline when "Show item areas" is on. */
+.hotspot {
+  position: absolute;
+  z-index: 3;
+  border-radius: 6px;
+  background: transparent;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.hotspot:hover {
+  background: rgba(79, 70, 229, 0.16);
+  border-color: rgba(79, 70, 229, 0.5);
+}
+.hotspot--visible {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: rgba(79, 70, 229, 0.45);
+}
+
 /* Round only the OUTER edges so the spine stays flat, like a real book. */
 .flip-page--right {
   border-top-right-radius: 6px;

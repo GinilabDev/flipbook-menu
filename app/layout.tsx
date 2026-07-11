@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { CartProvider } from "@/lib/cart";
 
 export const metadata: Metadata = {
   title: "FlipBook — PDF to Flipbook",
@@ -14,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <CartProvider>{children}</CartProvider>
+      </body>
     </html>
   );
 }
