@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+/* ---- Flipbook stage ---- */
+.flip-stage::-webkit-scrollbar {
+  display: none;
+}
+
+/* react-pageflip page surface */
+.flip-page {
+  position: relative;
+  background: #fff;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* smoother compositing during the flip */
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.flip-page img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Round only the OUTER edges so the spine stays flat, like a real book. */
+.flip-page--right {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+.flip-page--left {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+/* Soft, wide spine shadow on the inner edge of each page (moves with the page).
+   The two pages of an open spread meet to form the central fold, like Heyzine. */
+.flip-page--right::after,
+.flip-page--left::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14%;
+  max-width: 90px;
+  pointer-events: none;
+  z-index: 2;
+}
+.flip-page--right::after {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    rgba(15, 23, 42, 0.28) 0%,
+    rgba(15, 23, 42, 0.12) 28%,
+    rgba(15, 23, 42, 0.04) 60%,
+    rgba(15, 23, 42, 0) 100%
+  );
+}
+.flip-page--left::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    rgba(15, 23, 42, 0.28) 0%,
+    rgba(15, 23, 42, 0.12) 28%,
+    rgba(15, 23, 42, 0.04) 60%,
+    rgba(15, 23, 42, 0) 100%
+  );
+}
+
+/* Soft drop shadow beneath the whole book on the light stage */
+/* .shadow-book {
+  filter: drop-shadow(0 22px 40px rgba(15, 23, 42, 0.22));
+} */
+
+/* Closed-cover state: stacked page edges to give the book real thickness (like Heyzine). */
+.book--cover {
+  filter: drop-shadow(0 22px 40px rgba(15, 23, 42, 0.28))
+    drop-shadow(3px 3px 0 rgba(0, 0, 0, 0.06))
+    drop-shadow(6px 6px 0 rgba(0, 0, 0, 0.05))
+    drop-shadow(9px 9px 0 rgba(0, 0, 0, 0.04))
+    drop-shadow(12px 12px 0 rgba(0, 0, 0, 0.03));
+}
+
+/* keep the flip animation on its own compositor layer */
+.stf__parent,
+.stf__block {
+  will-change: transform;
+}
+
+/* Page-change arrows using the Heyzine icon sprite (recoloured via CSS mask) */
+.hz-arrow {
+  display: block;
+  width: 44px;
+  height: 44px;
+  background-color: #94a3b8; /* slate-400 */
+  -webkit-mask: url(/heyzine_iconset.png) -270px 0 / 585px 45px no-repeat;
+  mask: url(/heyzine_iconset.png) -270px 0 / 585px 45px no-repeat;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+.hz-arrow--flip {
+  transform: scaleX(-1);
+}
+.group:hover .hz-arrow {
+  background-color: #334155; /* slate-700 */
+}
+.group:hover .hz-arrow:not(.hz-arrow--flip) {
+  transform: translateX(-2px);
+}
+.group:hover .hz-arrow--flip {
+  transform: scaleX(-1) translateX(-2px);
+}
