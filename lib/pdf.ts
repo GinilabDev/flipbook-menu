@@ -83,7 +83,7 @@ async function extractTokens(
 export async function renderPdf(
   source: PdfSource | File,
   onProgress?: ProgressCallback,
-  scale = 1.6
+  scale = 2.6
 ): Promise<RenderResult> {
   const src: PdfSource = source instanceof File ? { file: source } : source;
   const buffer = await toBuffer(src);
@@ -91,15 +91,23 @@ export async function renderPdf(
   const total = pdf.numPages;
   const pages: RenderedPage[] = [];
 
+  // Cap the longest rendered side so a large PDF can't blow up memory; the
+  // effective scale is reduced only when a page would exceed this.
+  const MAX_SIDE = 4200;
+
   for (let i = 1; i <= total; i++) {
     const page = await pdf.getPage(i);
 
-    // Account for high-DPI screens so text stays crisp.
+    // Account for high-DPI screens so text stays crisp, then clamp.
     const dpr = Math.min(
       typeof window !== "undefined" ? window.devicePixelRatio : 1,
       2
     );
-    const viewport = page.getViewport({ scale: scale * dpr });
+    const base = page.getViewport({ scale: 1 });
+    let renderScale = scale * dpr;
+    const longSide = Math.max(base.width, base.height) * renderScale;
+    if (longSide > MAX_SIDE) renderScale *= MAX_SIDE / longSide;
+    const viewport = page.getViewport({ scale: renderScale });
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -112,10 +120,12 @@ export async function renderPdf(
 
     const tokens = await extractTokens(page);
 
+    // width/height are only used for the page aspect ratio, so the ratio is
+    // what matters here (not the absolute pixel size).
     pages.push({
       src: canvas.toDataURL("image/png"),
-      width: viewport.width / dpr,
-      height: viewport.height / dpr,
+      width: viewport.width,
+      height: viewport.height,
       tokens,
     });
 

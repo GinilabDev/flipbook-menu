@@ -168,7 +168,7 @@ export default function CartUI({ currencySymbol }: CartUIProps) {
                     disabled={placing}
                     className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-60"
                   >
-                    {placing ? "Placing…" : "Place order"}
+                    Checkout
                   </button>
                 </div>
               </>
