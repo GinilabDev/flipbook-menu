@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
+import type { Restaurant, TableInfo } from "@/lib/menu";
+import { effectivePrice } from "@/lib/menu";
 
 interface CartUIProps {
-  currencySymbol: string;
+  restaurant: Restaurant;
+  table?: TableInfo;
 }
 
 const money = (sym: string, n: number) => `${sym}${n.toFixed(2)}`;
 
 /** Floating cart button + slide-in drawer. Responsive: full-width sheet on
  *  mobile, right-hand drawer on desktop. */
-export default function CartUI({ currencySymbol }: CartUIProps) {
+export default function CartUI({ restaurant, table }: CartUIProps) {
+  const currencySymbol = restaurant.currencySymbol;
   const { lines, count, subtotal, setQty, remove, clear } = useCart();
   const [open, setOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -20,10 +24,12 @@ export default function CartUI({ currencySymbol }: CartUIProps) {
   const placeOrder = async () => {
     setPlacing(true);
     try {
-      const res = await fetch("/api/order", {
+      const res = await fetch("/api/flipbook/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          restaurant: restaurant.id,
+          table: table?.id,
           items: lines.map((l) => ({ itemId: l.item.id, qty: l.qty })),
         }),
       });
@@ -121,7 +127,7 @@ export default function CartUI({ currencySymbol }: CartUIProps) {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{l.item.name}</p>
                         <p className="text-sm text-slate-500">
-                          {money(currencySymbol, l.item.price)}
+                          {money(currencySymbol, effectivePrice(l.item))}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -150,7 +156,7 @@ export default function CartUI({ currencySymbol }: CartUIProps) {
                         </button>
                       </div>
                       <div className="w-16 text-right font-medium tabular-nums">
-                        {money(currencySymbol, l.item.price * l.qty)}
+                        {money(currencySymbol, effectivePrice(l.item) * l.qty)}
                       </div>
                     </div>
                   ))}

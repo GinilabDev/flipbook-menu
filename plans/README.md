@@ -1,30 +1,37 @@
 # Flipbook Menu — Plans
 
-রেস্টুরেন্টের PDF মেনুকে ইন্টার‍্যাক্টিভ ফ্লিপবুকে পরিণত করার প্রজেক্ট। এডমিন প্যানেল
-(tomafood.net) থেকে PDF আপলোড হয়, এই অ্যাপ সেটা API-র মাধ্যমে এনে রেন্ডার করে, আইটেমে
-ক্লিক করে কার্টে যোগ করা যায়, অর্ডার দেওয়া যায়, এবং (future) আইটেমের ছবি/ভিডিও দেখা যায়।
+**টেবিলের QR স্ক্যান → সেই রেস্টুরেন্টের মেনু ফ্লিপবুক আকারে → cart → অর্ডার।**
 
-## এই ফোল্ডারের ফাইল
+কাস্টমার টেবিলের QR/বারকোড স্ক্যান করে, সেই রেস্টুরেন্টের মেনু একটা ফ্লিপবুক-টেমপ্লেটে
+লোড হয়, আইটেমে ট্যাপ করে কার্টে যোগ করা যায় ও অর্ডার দেওয়া যায়। আইটেমের ছবি/ভিডিও
+দেখা যায়। পুরোটা মোবাইল-রেসপনসিভ।
+
+> ⚠️ **পরিবর্তন (2026-07-12):** আগের PDF-ভিত্তিক পরিকল্পনা বাতিল। এখন PDF নয় —
+> রেস্টুরেন্টের **structured মেনু-ডেটা** (এডমিন DB) থেকে আইটেম এসে ফ্লিপবুক টেমপ্লেটের
+> পেজে বসবে। পুরনো PDF/auto-detect কোড ঐচ্ছিক "import" টুল হিসেবে থাকতে পারে (মূল ফ্লো নয়)।
+
+## দুই প্রজেক্ট
+
+| প্রজেক্ট | পাথ | স্ট্যাক | ভূমিকা |
+|---|---|---|---|
+| Flipbook (এই repo) | `d:\ginilabProjects\flipbook-menu` | Next.js 16 / React 19 / Tailwind | কাস্টমার-facing ফ্লিপবুক |
+| Admin (tomafood) | `d:\laragon\www\tomafood-net` | CodeIgniter (PHP) + MySQL | মেনু/টেবিল/অর্ডার ডেটা + API |
+
+## ফাইল
 
 | ফাইল | বিষয় |
 |---|---|
-| [00-overview.md](00-overview.md) | সামগ্রিক আর্কিটেকচার, ডেটা-ফ্লো, মাইলস্টোন |
-| [01-flipbook-app.md](01-flipbook-app.md) | এই অ্যাপে (flipbook) কী কী কাজ |
-| [02-admin-app.md](02-admin-app.md) | এডমিন প্যানেলে কী কী কাজ |
-| [03-media-feature.md](03-media-feature.md) | আইটেমের ছবি/ভিডিও (media button) ফিচার |
-| [api-contract.md](api-contract.md) | দুই অ্যাপের মধ্যে JSON API চুক্তি |
+| [00-overview.md](00-overview.md) | নতুন আর্কিটেকচার, QR-ফ্লো, মাইলস্টোন |
+| [01-flipbook-app.md](01-flipbook-app.md) | ফ্লিপবুক অ্যাপের কাজ (layout engine, list টগল) |
+| [02-admin-app.md](02-admin-app.md) | এডমিনের কাজ (API endpoint, QR, video ফিল্ড) |
+| [03-media-feature.md](03-media-feature.md) | আইটেমের ছবি/ভিডিও |
+| [04-data-mapping.md](04-data-mapping.md) | DB টেবিল → ফ্লিপবুক JSON ম্যাপিং |
+| [api-contract.md](api-contract.md) | দুই অ্যাপের JSON চুক্তি |
 
-## বর্তমান অবস্থা (2026-07-11)
+## চূড়ান্ত সিদ্ধান্ত
 
-- **Stack:** Next.js 16, React 19, `pdfjs-dist`, `react-pageflip`, Tailwind
-- **তৈরি (mock API দিয়ে চলছে):** API-driven PDF loading, PDF proxy, auto-detect
-  hotspot, cart, checkout — বিস্তারিত [01-flipbook-app.md](01-flipbook-app.md)-এ।
-- **বাকি:** এডমিন side (item catalog, hotspot editor, media manager), media
-  lightbox, আসল API যুক্ত করা।
-
-## মূল সিদ্ধান্ত
-
-1. **Hotspot:** PDF text থেকে auto-detect (এডমিনে পরে ম্যানুয়াল সংশোধন-লেয়ার)।
-2. **PDF fetch:** নিজের Next.js proxy (`/api/pdf-proxy`) দিয়ে — CORS এড়াতে।
-3. **API:** এখন mock; আসল API পরে একই response-shape মেনে বানানো হবে।
-4. **Media:** ভিডিও = YouTube/Vimeo embed, ছবি = এডমিন আপলোড → CDN।
+1. **Layout:** fixed template slots (প্রতি পেজে নির্দিষ্ট সংখ্যক আইটেম, ক্যাটাগরি নতুন পেজে)।
+2. **Mobile:** ফ্লিপবুক (single-page) + একটা "list view" টগল।
+3. **Theme:** একটি template, প্রতি রেস্টুরেন্টে শুধু রঙ + logo।
+4. **ভিডিও:** YouTube/Vimeo embed · **ছবি:** এডমিন আপলোড → CDN।
+5. **অর্ডার:** টেবিল-context সহ, বিদ্যমান tomafood order API-তে যুক্ত।

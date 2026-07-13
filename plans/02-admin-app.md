@@ -1,32 +1,54 @@
-# 02 — Admin অ্যাপ (tomafood.net)
+# 02 — Admin (tomafood-net, CodeIgniter + MySQL)
 
-এই অংশটা আলাদা এডমিন প্যানেলে হবে। flipbook শুধু API consume করে, তাই এডমিনের
-দায়িত্ব হলো নিচের ডেটা তৈরি করে [api-contract.md](api-contract.md)-এর shape-এ সার্ভ করা।
+**সুখবর:** মেনু-ডেটা DB-তে আগে থেকেই আছে (`rcs_recipe`, `rcs_recipe_category`,
+`rcs_recipe_images`, `rcs_restaurant_table` ...)। তাই বেশিরভাগ কাজ = বিদ্যমান ডেটাকে
+JSON API-তে expose করা + কয়েকটা নতুন জিনিস (QR, video ফিল্ড)।
 
-## ১. PDF আপলোড ও স্টোরেজ
-- Menu-র সাথে PDF যুক্ত করে রাখা, একটা `pdfUrl` দেওয়া (CDN/সার্ভার)।
-- একই রেস্টুরেন্টের একাধিক menu ভার্সন সাপোর্ট করলে ভালো।
+পূর্ণ টেবিল→JSON ম্যাপিং: [04-data-mapping.md](04-data-mapping.md)।
 
-## ২. Item catalog (media-র ভিত্তি)
-- প্রতিটি আইটেমের **স্থায়ী `itemId`**, নাম, দাম, description।
-- auto-detect ফলাফল import করে দ্রুত catalog বানানো যায় (flipbook-এর detect লজিক
-  রেফারেন্স হিসেবে ব্যবহার করা যায়), তারপর ম্যানুয়ালি সংশোধন।
+## ১. Menu JSON API endpoint (মূল কাজ)
+- নতুন controller, যেমন `api/application/controllers/v2/Flipbook.php`।
+- `GET /api/v2/flipbook/menu?restaurant={id}` → `{ restaurant, categories[], items[] }`।
+- সোর্স:
+  - `categories` ← `rcs_recipe_category` (restaurant_id, sort_order, name, color;
+    subcategory দরকার হলে `rcs_recipe_subcategory`)।
+  - `items` ← `rcs_recipe` (name, shortdesc, longdesc, out_price, discount_price,
+    category_id, veg/hot/nut, sort_order; শুধু active/available)।
+  - `media` ← `rcs_recipe_images` / `rcs_recipe_photo` + নতুন video ফিল্ড।
+- ছবির পূর্ণ URL বানানো (CDN/uploads path)।
+- শুধু কাস্টমারকে দেখানোর মতো আইটেম (available, price > 0) ফিল্টার।
 
-## ৩. Visual Hotspot editor (সবচেয়ে বড় কাজ)
-- PDF পেজ রেন্ডার করে তার উপর mouse দিয়ে rectangle আঁকা।
-- প্রতিটি box-এ একটা catalog item assign করা; box move / resize / delete।
-- rect **অনুপাতে (0–1)** সেভ — যাতে যেকোনো screen size / zoom-এ মিলে যায়।
-- ঐচ্ছিক: auto-detect দিয়ে খসড়া box বানিয়ে দিয়ে শুধু সংশোধন করানো (কম কাজ)।
+## ২. Table QR generate / print
+- ডেটা রেডি: `rcs_restaurant_table` (id, restaurant_id, name, area_id)।
+- প্রতি টেবিলের জন্য QR = `https://menu.tomafood.net/r/{restaurantId}?t={tableId}`।
+- এডমিন UI: টেবিল তালিকায় "QR ডাউনলোড/প্রিন্ট" (PNG/PDF, নাম-সহ)।
+- QR জেনারেশন সার্ভার-সাইড (PHP QR lib) বা ফ্রন্টে।
 
-## ৪. Media manager (per item)
-- ছবি আপলোড → সার্ভার/S3 → CDN URL (`type:"image"`)।
-- ভিডিও: YouTube/Vimeo লিংক পেস্ট (`type:"video", provider:"youtube"|"vimeo"`)।
-- একাধিক media, ক্রম সাজানো, thumbnail। বিস্তারিত [03-media-feature.md](03-media-feature.md)।
+## ৩. Item video ফিল্ড (এখন নেই)
+- ভিডিও রাখার জায়গা যোগ করা — দুইভাবে:
+  - সহজ: `rcs_recipe`-এ `video_url` + `video_provider` কলাম, বা
+  - পরিষ্কার: নতুন `rcs_recipe_media` টেবিল (recipe_id, type, url, provider,
+    thumbnail, sort_order) — image+video একসাথে।
+- এডমিন recipe-edit ফর্মে YouTube/Vimeo লিংক ইনপুট।
 
-## ৫. API endpoints
-- `GET /api/menu?restaurant={id}` → `Menu` (items + hotspots + media সহ)।
-- `POST /api/order` → অর্ডার গ্রহণ + confirmation।
-- shape অবশ্যই [api-contract.md](api-contract.md) মানতে হবে।
+## ৪. Branding (রঙ + logo)
+- Logo সাধারণত `rcs_restaurant`-এ; brand রঙ `rcs_restaurant_theme`/website টেবিলে
+  (না থাকলে একটা `brand_color` কলাম)।
+- API `restaurant` অবজেক্টে `logoUrl`, `brandColor` রিটার্ন।
 
-## ৬. Order management
-- আসা অর্ডারের তালিকা, স্ট্যাটাস (received → preparing → done), বিস্তারিত।
+## ৫. Order API (reuse)
+- বিদ্যমান order ফ্লো আছে (`Order_model`, `rcs_order`/`rcs_order_item`,
+  v1/v2 `Orderpad.php`)।
+- flipbook থেকে আসা অর্ডার এই ফ্লোতে যুক্ত: `restaurant_id` + `table_id` +
+  items[{recipeId, qty, options}] + note।
+- অর্ডার-উৎস "flipbook/QR" মার্ক করা (রিপোর্টিং-এর জন্য)।
+- কিচেন/অর্ডার-স্ক্রিনে টেবিল অনুযায়ী দেখানো (বিদ্যমান)।
+
+## ৬. (ঐচ্ছিক) PDF import টুল
+- পুরনো flipbook-এর `detect.ts` লজিক দিয়ে PDF মেনু পড়ে দ্রুত `rcs_recipe` seed —
+  শুধু ডেটা-এন্ট্রি সহায়ক, কাস্টমার ফ্লোতে নয়।
+
+## নিরাপত্তা/নোট
+- এন্ডপয়েন্ট পাবলিক (QR যে কেউ স্ক্যান করবে) — শুধু পড়ার ডেটা, কোনো সংবেদনশীল তথ্য নয়।
+- restaurant_id দিয়ে scoping; rate-limit; ছবি/ভিডিও URL validate।
+- CORS: flipbook ডোমেইন allow করা (নয়তো আগের মতো proxy)।

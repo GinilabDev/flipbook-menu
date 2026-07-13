@@ -1,70 +1,70 @@
-# API Contract — flipbook ↔ admin
+# API Contract — flipbook ↔ admin (tomafood-net)
 
-flipbook শুধু এই endpoint দুটো **consume** করে। এখন mock route দিয়ে চলছে
-(`app/api/*`); আসল এডমিন API (tomafood.net) ঠিক এই shape রিটার্ন করলে flipbook-এর
-কোনো কোড বদলাতে হবে না। সোর্স-অফ-ট্রুথ টাইপ: `lib/menu.ts`।
+flipbook এই endpoint গুলো **consume** করে। এখন mock; আসল tomafood API একই shape
+রিটার্ন করলে flipbook কোড বদলাবে না। টেবিল→JSON: [04-data-mapping.md](04-data-mapping.md)।
 
-## GET /api/menu?restaurant={id}
-
-রিটার্ন → `Menu`:
+## GET /api/v2/flipbook/menu?restaurant={id}&table={tableId}
 
 ```jsonc
 {
-  "menuId": "menu_demo",
-  "title": "Main Menu",
-  "pdfUrl": "/api/pdf-proxy?url=https%3A%2F%2Fbrek-e.co.uk%2Fpdf%2FMain%2520Print%2520me.pdf",
-  "currency": "GBP",
-  "currencySymbol": "£",
-  "autoDetect": true,          // true বা hotspots খালি → client auto-detect করবে
+  "restaurant": {
+    "id": "42",
+    "name": "Toma Food",
+    "logoUrl": "https://cdn.tomafood.net/logo/42.png",
+    "brandColor": "#c1121f",
+    "currency": "GBP",
+    "currencySymbol": "£"
+  },
+  "table": { "id": "7", "name": "Table 7", "area": "Ground floor" },  // ঐচ্ছিক
+  "categories": [
+    { "id": "3", "name": "Starters", "description": "…", "color": "#e63946", "sortOrder": 1 }
+  ],
   "items": [
     {
-      "id": "it_45",           // স্থায়ী হওয়া উচিত (media এর জন্য জরুরি)
+      "id": "1201",                 // rcs_recipe.id — স্থায়ী
       "name": "Chicken Biryani",
-      "price": 8.50,
-      "description": "…",
-      "media": [               // ঐচ্ছিক — দেখুন 03-media-feature.md
-        { "type": "image", "url": "https://cdn.../biryani.jpg", "thumbnail": "…" },
-        { "type": "video", "provider": "youtube", "url": "https://youtu.be/abc123" }
+      "shortDesc": "…",
+      "longDesc": "…",
+      "price": 8.50,                // out_price
+      "discountPrice": 0,           // > 0 হলে কাটা-দাম
+      "categoryId": "3",
+      "subcategoryId": "0",
+      "sortOrder": 2,
+      "veg": false, "hot": true, "nut": false,
+      "media": [
+        { "type": "image", "url": "https://cdn.../1201.jpg", "thumbnail": "..." },
+        { "type": "video", "provider": "youtube", "url": "https://youtu.be/abc" }
       ]
-    }
-  ],
-  "hotspots": [
-    {
-      "id": "hs_9",
-      "itemId": "it_45",
-      "pageNumber": 1,          // 1-based
-      "rect": { "x": 0.12, "y": 0.34, "w": 0.20, "h": 0.06 }  // পেজের অনুপাত 0–1
     }
   ]
 }
 ```
 
 **নিয়ম:**
-- `rect` সবসময় **0–1 অনুপাতে** (top-left origin) — যেকোনো screen/zoom-এ মিলবে।
-- `pdfUrl` সরাসরি বা `/api/pdf-proxy?url=…` দিয়ে দেওয়া যায় (CORS এড়াতে)।
-- `autoDetect:true` বা `hotspots` খালি হলে flipbook নিজে PDF text থেকে আইটেম detect করে।
-  আসল hotspot দিলে `autoDetect:false` দিয়ে `items`+`hotspots` পূরণ করুন।
+- আইটেম `categoryId` দিয়ে ক্যাটাগরিতে গ্রুপ হয়; layout engine ফ্লিপবুক পেজে সাজায়।
+- `sortOrder` মেনে ক্রম; শুধু available আইটেম।
+- `table` থাকলে dine-in context; না থাকলে সাধারণ ভিউ।
 
-## POST /api/order
+## POST /api/v2/flipbook/order
 
-বডি (flipbook যা পাঠায়):
-
+বডি:
 ```jsonc
 {
-  "restaurant": "demo",
-  "items": [ { "itemId": "it_45", "qty": 2 } ],
-  "customer": { "name": "…", "phone": "…", "table": "…" },   // ঐচ্ছিক (checkout পেজে)
-  "note": "…"
+  "restaurant": "42",
+  "table": "7",
+  "items": [
+    { "itemId": "1201", "qty": 2, "options": [] }
+  ],
+  "note": "extra spicy",
+  "customer": { "name": "…", "phone": "…" }   // dine-in-এ ঐচ্ছিক
 }
 ```
-
 রিটার্ন:
-
 ```jsonc
-{ "ok": true, "orderId": "…", "status": "received" }
+{ "ok": true, "orderId": "...", "status": "received" }
 ```
 
-## GET /api/pdf-proxy?url={encoded}
-
-external PDF-কে CORS-নিরাপদভাবে stream করে। শুধু whitelisted host
-(`brek-e.co.uk`, `tomafood.net`) — `app/api/pdf-proxy/route.ts`-এ তালিকা।
+## নোট
+- endpoint পাবলিক (QR স্ক্যান) — read-only menu ডেটা, সংবেদনশীল কিছু নয়।
+- CORS: flipbook ডোমেইন allow, নয়তো flipbook-এ proxy রুট।
+- আগের `Menu/Hotspot/Rect/pdfUrl` shape **বাতিল** — নতুন shape এটি।

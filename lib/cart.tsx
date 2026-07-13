@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { MenuItem } from "@/lib/menu";
+import { effectivePrice } from "@/lib/menu";
 
 export interface CartLine {
   item: MenuItem;
@@ -106,7 +107,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return {
       lines,
       count: lines.reduce((n, l) => n + l.qty, 0),
-      subtotal: lines.reduce((s, l) => s + l.item.price * l.qty, 0),
+      subtotal: lines.reduce((s, l) => s + effectivePrice(l.item) * l.qty, 0),
       add: (item, qty) => dispatch({ type: "add", item, qty }),
       setQty: (itemId, qty) => dispatch({ type: "setQty", itemId, qty }),
       remove: (itemId) => dispatch({ type: "remove", itemId }),
