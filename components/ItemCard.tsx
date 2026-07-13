@@ -55,21 +55,21 @@ export default function ItemCard({
                 key={index}
                 src="/images/hot.png"
                 alt="Hot"
-                className="inline h-6 w-2 pr-1"
+                className="inline h-6  flex-shrink-0 object-contain"
               />
             ))}
           {item.nut && (
             <img
               src="/images/nut.png"
               alt="Contains nuts"
-              className="inline h-6 px-1"
+              className="ml-1 inline h-6 flex-shrink-0 object-contain"
             />
           )}
           {item.veg && (
             <img
               src="/images/veg.png"
               alt="Vegetarian"
-              className="inline h-6"
+              className="ml-1 inline h-6  flex-shrink-0 object-contain"
             />
           )}
         </div>

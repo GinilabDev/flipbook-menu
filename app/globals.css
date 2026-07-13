@@ -24,14 +24,12 @@ body {
   transform: translateZ(0);
 }
 
+/* Prevent images from being dragged/selected during a page flip. Sizing is left
+   to each element's own classes — data-driven pages render many sized images
+   (thumbnails, dietary badges, logo), not one full-bleed page image. */
 .flip-page img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
   -webkit-user-drag: none;
   user-select: none;
-  pointer-events: none;
 }
 
 /* Clickable item region overlaid on a page. Invisible by default; a soft
