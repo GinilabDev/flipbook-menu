@@ -23,14 +23,14 @@ export function mockMenu(restaurantId = "demo", tableId?: string): Menu {
     items: [
       { id: "i1", name: "Onion Bhaji", price: 4.5, categoryId: "c1", sortOrder: 1, veg: true,
         shortDesc: "Crispy spiced onion fritters", media: [{ type: "image", url: "https://picsum.photos/seed/bhaji/600/400" }] },
-      { id: "i2", name: "Chicken Pakora", price: 5.25, categoryId: "c1", sortOrder: 2, hot: true,
+      { id: "i2", name: "Chicken Pakora", price: 5.25, categoryId: "c1", sortOrder: 2, hot: 1,
         shortDesc: "Marinated chicken, gram-flour batter" },
       { id: "i3", name: "Vegetable Samosa", price: 3.95, categoryId: "c1", sortOrder: 3, veg: true,
         shortDesc: "Two pieces, mint chutney" },
       { id: "i4", name: "Sheek Kebab", price: 5.5, categoryId: "c1", sortOrder: 4,
         shortDesc: "Chargrilled minced lamb skewer" },
 
-      { id: "i5", name: "Chicken Tikka Masala", price: 9.95, categoryId: "c2", sortOrder: 1, hot: true,
+      { id: "i5", name: "Chicken Tikka Masala", price: 9.95, categoryId: "c2", sortOrder: 1, hot: 2,
         shortDesc: "Creamy tomato, tandoori chicken",
         longDesc: "Our best-seller — tandoori chicken in a rich, mildly spiced tomato and cream sauce.",
         media: [

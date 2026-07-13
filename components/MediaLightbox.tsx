@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { mediaUrl } from "@/lib/config";
 import type { Media, MenuItem } from "@/lib/menu";
 
 interface MediaLightboxProps {
@@ -53,7 +54,7 @@ export default function MediaLightbox({ item, onClose }: MediaLightboxProps) {
         <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-black">
           {current.type === "image" ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={current.url} alt={item.name} className="max-h-full max-w-full object-contain" />
+            <img src={mediaUrl(current.url)} alt={item.name} className="max-h-full max-w-full object-contain" />
           ) : embedUrl(current) ? (
             <iframe
               src={embedUrl(current)!}
@@ -63,7 +64,7 @@ export default function MediaLightbox({ item, onClose }: MediaLightboxProps) {
               allowFullScreen
             />
           ) : (
-            <video src={current.url} controls className="max-h-full max-w-full" />
+            <video src={mediaUrl(current.url)} controls className="max-h-full max-w-full" />
           )}
         </div>
 

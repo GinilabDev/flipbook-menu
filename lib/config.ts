@@ -7,7 +7,22 @@ export const ADMIN_API_BASE =
   process.env.ADMIN_API_BASE?.replace(/\/+$/, "") ??
   "http://localhost/tomafood-net/api";
 
+/**
+ * Web root that recipe media paths are relative to. The admin API returns raw
+ * paths like `/images/recipe_images/x.png`, served from the tomafood web root.
+ */
 export const file_url = "http://localhost/tomafood-net";
+
+/**
+ * Resolve a media path to a full URL. Absolute URLs (http/https — e.g. YouTube,
+ * Vimeo, or already-absolute image links) pass through unchanged; relative admin
+ * paths get `file_url` prepended.
+ */
+export function mediaUrl(path?: string | null): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${file_url}/${path.replace(/^\/+/, "")}`;
+}
 
 /** Flipbook path on the admin API. */
 export const ADMIN_MENU_PATH = "/v2/flipbook/menu";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
 
@@ -42,7 +43,7 @@ export default function ItemPopup({
             onClick={() => hasMedia(item) && onMedia(item)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={thumb.url} alt={item.name} className="h-full w-full object-cover" />
+            <img src={mediaUrl(thumb.url)} alt={item.name} className="h-full w-full object-cover" />
           </div>
         )}
 

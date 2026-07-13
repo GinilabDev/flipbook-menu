@@ -29,7 +29,8 @@ export interface MenuItem {
   subcategoryId?: string;
   sortOrder?: number;
   veg?: boolean;
-  hot?: boolean;
+  /** spice level — rendered as N chili icons (0/undefined = none) */
+  hot?: number;
   nut?: boolean;
   media?: Media[];
 }

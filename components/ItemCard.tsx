@@ -1,6 +1,6 @@
 "use client";
 
-import { file_url } from "@/lib/config";
+import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
 import { FaPlus } from "react-icons/fa6";
@@ -35,7 +35,7 @@ export default function ItemCard({
         <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`${file_url}${thumb.thumbnail || thumb.url}`}
+            src={mediaUrl(thumb.thumbnail || thumb.url)}
             alt=""
             className="h-full w-full object-cover"
             loading="lazy"
@@ -48,30 +48,30 @@ export default function ItemCard({
           <span className="truncate font-semibold text-slate-800">
             {item.name}
           </span>
-          {/* {item.hot &&
+          {item.hot &&
             item.hot != 0 &&
-            [...Array(Number(hot))].map((_, index) => (
+            [...Array(Number(item.hot))].map((_, index) => (
               <img
                 key={index}
-                src="/images/restaurant/hot.png"
+                src="/images/hot.png"
                 alt="Hot"
-                className="inline h-6 pr-1"
+                className="inline h-6 w-2 pr-1"
               />
             ))}
-          {item.nut && item.nut != 0 && (
+          {item.nut && (
             <img
-              src="/images/restaurant/nut.png"
-              alt="Hot"
+              src="/images/nut.png"
+              alt="Contains nuts"
               className="inline h-6 px-1"
             />
           )}
-          {item.veg && item.veg != 0 && (
+          {item.veg && (
             <img
-              src="/images/restaurant/veg.png"
-              alt="Hot"
+              src="/images/veg.png"
+              alt="Vegetarian"
               className="inline h-6"
             />
-          )} */}
+          )}
         </div>
         {item.shortDesc && (
           <span className="mt-0.5 line-clamp-2 text-xs text-slate-500">
