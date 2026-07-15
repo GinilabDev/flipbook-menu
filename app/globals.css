@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---- "Fly to cart" animation ---- */
+/* Throwaway chip that arcs from the add point into the cart button. */
+.fly-chip {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  max-width: 170px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.45);
+}
+/* Little pulse on the cart button when a chip lands. */
+@keyframes cartBump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.cart-bump {
+  animation: cartBump 0.35s ease;
+}
+
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
 }
@@ -121,24 +151,34 @@ body {
 /* Page-change arrows using the Heyzine icon sprite (recoloured via CSS mask) */
 .hz-arrow {
   display: block;
-  width: 44px;
-  height: 44px;
-  background-color: #94a3b8; /* slate-400 */
-  -webkit-mask: url(/icons.png) -270px 0 / 585px 45px no-repeat;
-  mask: url(/icons.png) -270px 0 / 585px 45px no-repeat;
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+  --k: 0.72; /* mobile scale of the 44px design → smaller on phones */
+  width: calc(44px * var(--k));
+  height: calc(44px * var(--k));
+  background-color: #334155; /* slate-700 — always active, no hover needed */
+  -webkit-mask-image: url(/icons.png);
+  mask-image: url(/icons.png);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: calc(585px * var(--k)) calc(45px * var(--k));
+  mask-size: calc(585px * var(--k)) calc(45px * var(--k));
+  -webkit-mask-position: calc(-270px * var(--k)) 0;
+  mask-position: calc(-270px * var(--k)) 0;
+  transition: transform 0.2s ease;
+}
+@media (min-width: 640px) {
+  .hz-arrow {
+    --k: 1; /* full size on tablet/desktop */
+  }
 }
 .hz-arrow--flip {
   transform: scaleX(-1);
 }
-.group:hover .hz-arrow {
-  background-color: #334155; /* slate-700 */
-}
-.group:hover .hz-arrow:not(.hz-arrow--flip) {
-  transform: translateX(-2px);
-}
-.group:hover .hz-arrow--flip {
-  transform: scaleX(-1) translateX(-2px);
+/* Colour is always active; keep only a subtle nudge on real hover devices. */
+@media (hover: hover) {
+  .group:hover .hz-arrow:not(.hz-arrow--flip) {
+    transform: translateX(-2px);
+  }
+  .group:hover .hz-arrow--flip {
+    transform: scaleX(-1) translateX(-2px);
+  }
 }

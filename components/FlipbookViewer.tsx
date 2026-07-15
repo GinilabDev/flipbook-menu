@@ -143,7 +143,7 @@ export default function FlipbookViewer({
       ref={rootRef}
       className="relative flex h-full w-full flex-col bg-gradient-to-b from-neutral-100 to-neutral-200"
     >
-      {/* Toolbar */}
+      {/* Toolbar — top-right */}
       <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
         <ToolButton
           label={soundOn ? "Mute" : "Unmute"}
@@ -210,11 +210,13 @@ export default function FlipbookViewer({
               ))}
             </HTMLFlipBook>
 
+            {/* Heyzine-style page arrows: overlaid on the page's inner bottom
+                corners (constant size regardless of zoom). */}
             <button
               onClick={flipPrev}
               aria-label="Previous page"
-              style={{ transform: `translate(-45%, 30%) scale(${1 / zoom})` }}
-              className={`group absolute bottom-0 -left-7 z-20 transition ${onCover ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              style={{ transform: `scale(${1 / zoom})` }}
+              className={`group absolute bottom-2 left-2 z-20 origin-bottom-left transition sm:bottom-3 sm:left-3 ${onCover ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               <span className="hz-arrow" />
             </button>
@@ -222,8 +224,8 @@ export default function FlipbookViewer({
               onClick={flipNext}
               disabled={current >= total - 1}
               aria-label="Next page"
-              style={{ transform: `translate(45%, 30%) scale(${1 / zoom})` }}
-              className={`group absolute bottom-0 -right-7 z-20 transition ${current >= total - 1 ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              style={{ transform: `scale(${1 / zoom})` }}
+              className={`group absolute bottom-2 right-2 z-20 origin-bottom-right transition sm:bottom-3 sm:right-3 ${current >= total - 1 ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               <span className="hz-arrow hz-arrow--flip" />
             </button>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
 import type { Restaurant, TableInfo } from "@/lib/menu";
 import { effectivePrice } from "@/lib/menu";
+import { FLY_EVENT, type FlyOrigin } from "@/lib/flyToCart";
 
 interface CartUIProps {
   restaurant: Restaurant;
@@ -20,6 +21,68 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
   const [open, setOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
+  const cartBtnRef = useRef<HTMLButtonElement>(null);
+
+  // "Fly to cart": animate a labelled chip from the add point into the cart
+  // button along an arc, then bump the button. Purely visual; the chip is a
+  // throwaway DOM node so it survives the popup/card unmounting on add.
+  useEffect(() => {
+    const bump = () => {
+      const btn = cartBtnRef.current;
+      if (!btn) return;
+      btn.classList.remove("cart-bump");
+      void btn.offsetWidth; // restart the keyframes
+      btn.classList.add("cart-bump");
+    };
+
+    const onFly = (e: Event) => {
+      const btn = cartBtnRef.current;
+      if (!btn) return;
+      const { x: sx, y: sy, label } = (e as CustomEvent<FlyOrigin>).detail;
+
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        bump();
+        return;
+      }
+
+      const r = btn.getBoundingClientRect();
+      const dx = r.left + r.width / 2 - sx;
+      const dy = r.top + r.height / 2 - sy;
+
+      const chip = document.createElement("div");
+      chip.className = "fly-chip";
+      chip.textContent = label || "+1";
+      chip.style.left = `${sx}px`;
+      chip.style.top = `${sy}px`;
+      document.body.appendChild(chip);
+
+      const anim = chip.animate(
+        [
+          { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+          {
+            transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${
+              dy * 0.5 - 70
+            }px)) scale(0.9)`,
+            opacity: 1,
+            offset: 0.5,
+          },
+          {
+            transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.2)`,
+            opacity: 0.35,
+          },
+        ],
+        { duration: 700, easing: "cubic-bezier(.4,.6,.3,1)" }
+      );
+      anim.onfinish = () => {
+        chip.remove();
+        bump();
+      };
+      anim.oncancel = () => chip.remove();
+    };
+
+    window.addEventListener(FLY_EVENT, onFly);
+    return () => window.removeEventListener(FLY_EVENT, onFly);
+  }, []);
 
   const placeOrder = async () => {
     setPlacing(true);
@@ -47,6 +110,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
     <>
       {/* Floating cart button */}
       <button
+        ref={cartBtnRef}
         onClick={() => {
           setPlaced(false);
           setOpen(true);

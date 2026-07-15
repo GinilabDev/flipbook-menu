@@ -4,6 +4,7 @@ import { useState } from "react";
 import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
+import { flyToCart } from "@/lib/flyToCart";
 
 interface ItemPopupProps {
   item: MenuItem;
@@ -88,7 +89,15 @@ export default function ItemPopup({
             </button>
           </div>
           <button
-            onClick={() => onAdd(item, qty)}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              flyToCart({
+                x: r.left + r.width / 2,
+                y: r.top + r.height / 2,
+                label: item.name,
+              });
+              onAdd(item, qty);
+            }}
             className="flex-1 rounded-xl bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-500"
           >
             Add · {formatPrice(currencySymbol, price * qty)}

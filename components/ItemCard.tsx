@@ -3,6 +3,7 @@
 import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
+import { flyToCart } from "@/lib/flyToCart";
 import { FaPlus } from "react-icons/fa6";
 interface ItemCardProps {
   item: MenuItem;
@@ -110,6 +111,12 @@ export default function ItemCard({
         aria-label={`Add ${item.name}`}
         onClick={(e) => {
           e.stopPropagation();
+          const r = e.currentTarget.getBoundingClientRect();
+          flyToCart({
+            x: r.left + r.width / 2,
+            y: r.top + r.height / 2,
+            label: item.name,
+          });
           onAdd(item);
         }}
         className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center self-center rounded-full border text-indigo-600 ring-indigo-600 text-lg transition"
