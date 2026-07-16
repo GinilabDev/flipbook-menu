@@ -54,7 +54,7 @@ export default function ItemPopup({
         )}
 
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-xl font-bold text-indigo-600">
+          <span className="text-xl font-bold" style={{ color: "var(--accent)" }}>
             {formatPrice(currencySymbol, price)}
           </span>
           {hasDiscount(item) && (
@@ -98,7 +98,8 @@ export default function ItemPopup({
               });
               onAdd(item, qty);
             }}
-            className="flex-1 rounded-xl bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-500"
+            style={{ background: "var(--accent)" }}
+            className="flex-1 rounded-xl py-3 font-medium text-white transition hover:opacity-90"
           >
             Add · {formatPrice(currencySymbol, price * qty)}
           </button>

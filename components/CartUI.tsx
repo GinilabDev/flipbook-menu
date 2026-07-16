@@ -71,7 +71,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
             opacity: 0.35,
           },
         ],
-        { duration: 700, easing: "cubic-bezier(.4,.6,.3,1)" }
+        { duration: 700, easing: "cubic-bezier(.4,.6,.3,1)" },
       );
       anim.onfinish = () => {
         chip.remove();
@@ -116,7 +116,8 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
           setOpen(true);
         }}
         aria-label="Open cart"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-900/30 transition hover:bg-indigo-500 sm:h-16 sm:w-16"
+        style={{ background: "var(--accent)" }}
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg shadow-black/25 transition hover:opacity-90 sm:h-16 sm:w-16"
       >
         <svg
           width="24"
@@ -147,15 +148,34 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
             onClick={() => setOpen(false)}
           />
           <div className="relative flex h-full w-full max-w-md flex-col bg-white text-slate-800 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h2 className="text-lg font-semibold">Your order</h2>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
-              >
-                ✕
-              </button>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold leading-tight">
+                  Your order
+                </h2>
+                <p className="truncate text-xs text-slate-400">
+                  {restaurant.name}
+                </p>
+              </div>
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {/* Only when the QR carried a table — otherwise we don't know
+                    which one, and a wrong number sends food to the wrong seat. */}
+                {table?.name && (
+                  <span
+                    style={{ background: "var(--accent)" }}
+                    className="rounded-lg px-2.5 py-1 text-xs font-bold text-white"
+                  >
+                    {table.name}
+                  </span>
+                )}
+                <button
+                  onClick={() => setOpen(false)}
+                  aria-label="Close"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {placed ? (
@@ -169,7 +189,8 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                 </p>
                 <button
                   onClick={() => setOpen(false)}
-                  className="mt-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500"
+                  style={{ background: "var(--accent)" }}
+                  className="mt-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
                 >
                   Back to menu
                 </button>
@@ -236,7 +257,8 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                   <button
                     onClick={placeOrder}
                     disabled={placing}
-                    className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                    style={{ background: "var(--accent)" }}
+                    className="w-full rounded-xl py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-60"
                   >
                     Checkout
                   </button>

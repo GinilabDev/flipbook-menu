@@ -3,6 +3,7 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { LayoutPage } from "@/lib/layout";
+import { PAGE_H, PAGE_W } from "@/lib/layout";
 import type { MenuItem } from "@/lib/menu";
 import MenuPage from "@/components/MenuPage";
 
@@ -38,7 +39,7 @@ export default function FlipbookViewer({
   onSelect,
   onMedia,
   onAdd,
-  aspect = 0.72,
+  aspect = PAGE_W / PAGE_H,
 }: FlipbookViewerProps) {
   const bookRef = useRef<any>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -198,14 +199,26 @@ export default function FlipbookViewer({
             >
               {pages.map((p, i) => (
                 <Page key={p.key} side={i % 2 === 0 ? "right" : "left"}>
-                  <MenuPage
-                    page={p}
-                    currencySymbol={currencySymbol}
-                    qtyOf={qtyOf}
-                    onSelect={onSelect}
-                    onMedia={onMedia}
-                    onAdd={onAdd}
-                  />
+                  {/* Pages are authored at PAGE_W × PAGE_H and scaled to the
+                      book — so type and rows keep their proportions (and the
+                      layout engine's px budget stays exact) at any size. */}
+                  <div
+                    style={{
+                      width: PAGE_W,
+                      height: PAGE_H,
+                      transform: `scale(${dims.width / PAGE_W})`,
+                      transformOrigin: "top left",
+                    }}
+                  >
+                    <MenuPage
+                      page={p}
+                      currencySymbol={currencySymbol}
+                      qtyOf={qtyOf}
+                      onSelect={onSelect}
+                      onMedia={onMedia}
+                      onAdd={onAdd}
+                    />
+                  </div>
                 </Page>
               ))}
             </HTMLFlipBook>
@@ -254,9 +267,10 @@ function ToolButton({
       onClick={onClick}
       aria-label={label}
       title={label}
+      style={active ? { background: "var(--accent)" } : undefined}
       className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-md shadow-slate-900/5 backdrop-blur transition ${
         active
-          ? "bg-indigo-500 text-white hover:bg-indigo-600"
+          ? "text-white hover:opacity-90"
           : "bg-white/90 text-slate-600 hover:bg-white hover:text-slate-900"
       }`}
     >

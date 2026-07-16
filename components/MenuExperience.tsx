@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Menu, MenuItem } from "@/lib/menu";
-import { buildPages, itemsPerPageFor } from "@/lib/layout";
+import { buildPages, itemsPerRowFor } from "@/lib/layout";
+import { mediaUrl } from "@/lib/config";
 import { useCart } from "@/lib/cart";
 import FlipbookViewer from "@/components/FlipbookViewer";
 import ListView from "@/components/ListView";
@@ -21,20 +22,18 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
 
   const sym = menu.restaurant.currencySymbol;
 
-  // Default to list on phones (faster ordering); flip on larger screens.
+  // Phones show one page at a time, so cards go one-up there. Keep this
+  // breakpoint in step with FlipbookViewer's.
   useEffect(() => {
-    const check = () => {
-      const p = window.innerWidth < 768;
-      setPortrait(p);
-    };
+    const check = () => setPortrait(window.innerWidth < 768);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
 
   const pages = useMemo(
-    () => buildPages(menu, { itemsPerPage: itemsPerPageFor(portrait) }),
-    [menu, portrait]
+    () => buildPages(menu, { itemsPerRow: itemsPerRowFor(portrait) }),
+    [menu, portrait],
   );
 
   const handlers = {
@@ -45,21 +44,32 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
   };
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col bg-slate-100">
+    // --accent carries the restaurant's theme highlight colour to every
+    // accented control below (cards, headings, cart) without prop-drilling it.
+    <div
+      className="flex h-[100dvh] w-full flex-col bg-slate-100"
+      style={{ "--accent": menu.restaurant.highlightColor || "#4f46e5" } as React.CSSProperties}
+    >
       {/* Header */}
       <header className="z-30 flex items-center justify-between gap-2 border-b border-black/5 bg-white px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white"
-            style={{ background: menu.restaurant.brandColor || "#111827" }}
-          >
-            {menu.restaurant.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={menu.restaurant.logoUrl} alt="" className="h-6 w-6 object-contain" />
-            ) : (
-              "🍽"
-            )}
-          </span>
+          {menu.restaurant.logoUrl ? (
+            // Wordmark logos are wide — let it keep its aspect instead of
+            // squashing it into a square.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mediaUrl(menu.restaurant.logoUrl)}
+              alt=""
+              className="h-8 w-auto max-w-[130px] flex-shrink-0 object-contain object-left"
+            />
+          ) : (
+            <span
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white"
+              style={{ background: menu.restaurant.brandColor || "#111827" }}
+            >
+              🍽
+            </span>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-800">{menu.restaurant.name}</p>
             {menu.table && (
