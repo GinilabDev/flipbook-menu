@@ -5,7 +5,7 @@
 /** tomafood admin API base, e.g. http://localhost/tomafood-net/api */
 export const ADMIN_API_BASE =
   process.env.ADMIN_API_BASE?.replace(/\/+$/, "") ??
-  "http://localhost/tomafood-net/api";
+  "http://localhost/tomafood-net/api/v2";
 
 /**
  * Web root that recipe media paths are relative to. The admin API returns raw
@@ -24,9 +24,14 @@ export function mediaUrl(path?: string | null): string {
   return `${file_url}/${path.replace(/^\/+/, "")}`;
 }
 
-/** Flipbook path on the admin API. */
-export const ADMIN_MENU_PATH = "/v2/flipbook/menu";
-export const ADMIN_ORDER_PATH = "/v2/flipbook/order";
+/**
+ * Flipbook paths on the admin API. Branding and menu data are separate
+ * endpoints — the restaurant payload is tiny and paints the cover/chrome, the
+ * menu is the big one.
+ */
+export const ADMIN_RESTAURANT_PATH = "/flipbook/restaurant";
+export const ADMIN_MENU_PATH = "/flipbook/menu";
+export const ADMIN_ORDER_PATH = "/flipbook/order";
 
 /** When true, skip the admin call and always serve mock data. */
 export const USE_MOCK = process.env.USE_MOCK === "1";
