@@ -28,35 +28,37 @@ export default function ListView({
       {cats.map((category) => (
         <section key={category.id} className="mb-6">
           <h2
-            className="sticky top-0 z-10 -mx-3 border-b-2 bg-white/95 px-3 py-2 text-lg font-bold text-slate-800 backdrop-blur"
-            style={{ borderColor: category.color || "#e5e7eb" }}
+            className="sticky top-0 z-10 -mx-3 border-b-2 bg-white/95 px-3 py-2 font-titleFont text-lg font-bold text-titleColor backdrop-blur"
+            style={{ borderColor: category.color || "#e3e1de" }}
           >
             {category.name}
           </h2>
           {category.description && (
-            <p className="mt-1.5 text-xs italic text-slate-400">{category.description}</p>
+            <p className="mt-1.5 font-descriptionFont text-xs italic text-disableTextColor">
+              {category.description}
+            </p>
           )}
 
           {groupCategoryItems(menu, category).map((group) => (
             <div key={group.subcategory?.id ?? "_"} className="mt-3">
               {group.subcategory && (
-                <div className="mb-2 mt-4 rounded-[10px] border bg-white px-4 py-2 shadow-sm first:mt-0">
+                <div className="mb-2 mt-4 rounded-[10px] border border-neutral-200 bg-white px-4 py-2 shadow-sm first:mt-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate text-lg font-bold text-slate-800">
+                      <span className="truncate font-titleFont text-lg font-bold text-titleColor">
                         {group.subcategory.name}
                       </span>
                       <CompactBadges item={group.subcategory} size={20} />
                     </span>
-                    <span className="flex-shrink-0 text-sm text-slate-500">
+                    <span className="flex-shrink-0 font-titleFont text-sm text-disableTextColor">
                       from{" "}
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-titleColor">
                         {formatPrice(sym, fromPrice(group.items))}
                       </span>
                     </span>
                   </div>
                   {group.subcategory.description && (
-                    <p className="text-sm tracking-wide text-slate-500">
+                    <p className="font-descriptionFont text-sm tracking-wide text-disableTextColor">
                       {group.subcategory.description}
                     </p>
                   )}

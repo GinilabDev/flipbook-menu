@@ -116,8 +116,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
           setOpen(true);
         }}
         aria-label="Open cart"
-        style={{ background: "var(--accent)" }}
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg shadow-black/25 transition hover:opacity-90 sm:h-16 sm:w-16"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-highlightColor text-white shadow-lg shadow-black/25 transition hover:opacity-90 sm:h-16 sm:w-16"
       >
         <svg
           width="24"
@@ -134,7 +133,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
           <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
         </svg>
         {count > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 font-titleFont text-xs font-bold text-white">
             {count}
           </span>
         )}
@@ -147,13 +146,13 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative flex h-full w-full max-w-md flex-col bg-white text-slate-800 shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div className="relative flex h-full w-full max-w-md flex-col bg-white text-titleColor shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4">
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold leading-tight">
+                <h2 className="font-titleFont text-lg font-semibold leading-tight">
                   Your order
                 </h2>
-                <p className="truncate text-xs text-slate-400">
+                <p className="truncate font-descriptionFont text-xs text-disableTextColor">
                   {restaurant.name}
                 </p>
               </div>
@@ -161,17 +160,14 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                 {/* Only when the QR carried a table — otherwise we don't know
                     which one, and a wrong number sends food to the wrong seat. */}
                 {table?.name && (
-                  <span
-                    style={{ background: "var(--accent)" }}
-                    className="rounded-lg px-2.5 py-1 text-xs font-bold text-white"
-                  >
+                  <span className="rounded-lg bg-highlightColor px-2.5 py-1 font-titleFont text-xs font-bold text-white">
                     {table.name}
                   </span>
                 )}
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-disableTextColor hover:bg-neutral-100"
                 >
                   ✕
                 </button>
@@ -183,20 +179,19 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">
                   ✓
                 </div>
-                <p className="text-lg font-medium">Order placed!</p>
-                <p className="text-sm text-slate-500">
+                <p className="font-titleFont text-lg font-medium">Order placed!</p>
+                <p className="font-descriptionFont text-sm text-disableTextColor">
                   Your order has been sent to the kitchen.
                 </p>
                 <button
                   onClick={() => setOpen(false)}
-                  style={{ background: "var(--accent)" }}
-                  className="mt-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                  className="mt-2 rounded-xl bg-highlightColor px-5 py-2.5 font-titleFont text-sm font-medium text-white transition hover:opacity-90"
                 >
                   Back to menu
                 </button>
               </div>
             ) : lines.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-slate-400">
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center font-descriptionFont text-disableTextColor">
                 <p className="text-4xl">🛒</p>
                 <p>Your cart is empty.</p>
                 <p className="text-sm">Tap an item on the menu to add it.</p>
@@ -207,11 +202,13 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                   {lines.map((l) => (
                     <div
                       key={l.item.id}
-                      className="flex items-start gap-3 border-b border-slate-100 py-3"
+                      className="flex items-start gap-3 border-b border-neutral-200 py-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{l.item.name}</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="truncate font-titleFont font-medium">
+                          {l.item.name}
+                        </p>
+                        <p className="font-titleFont text-sm text-disableTextColor">
                           {money(currencySymbol, effectivePrice(l.item))}
                         </p>
                       </div>
@@ -223,7 +220,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                         <button
                           onClick={() => remove(l.item.id)}
                           aria-label="Remove"
-                          className="text-slate-400 hover:text-rose-500"
+                          className="text-disableTextColor hover:text-rose-500"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -240,15 +237,15 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                           </svg>
                         </button>
                       </div>
-                      <div className="w-16 text-right font-medium tabular-nums">
+                      <div className="w-16 text-right font-titleFont font-medium tabular-nums">
                         {money(currencySymbol, effectivePrice(l.item) * l.qty)}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="border-t border-slate-100 px-5 py-4">
-                  <div className="mb-3 flex items-center justify-between text-base font-semibold">
+                <div className="border-t border-neutral-200 px-5 py-4">
+                  <div className="mb-3 flex items-center justify-between font-titleFont text-base font-semibold">
                     <span>Subtotal</span>
                     <span className="tabular-nums">
                       {money(currencySymbol, subtotal)}
@@ -257,8 +254,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                   <button
                     onClick={placeOrder}
                     disabled={placing}
-                    style={{ background: "var(--accent)" }}
-                    className="w-full rounded-xl py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-60"
+                    className="w-full rounded-xl bg-highlightColor py-3 font-titleFont font-medium text-white transition hover:opacity-90 disabled:bg-disableColor disabled:text-disableTextColor disabled:opacity-60"
                   >
                     Checkout
                   </button>
@@ -280,19 +276,21 @@ function QtyStepper({
   onChange: (qty: number) => void;
 }) {
   return (
-    <div className="flex items-center rounded-lg border border-slate-200">
+    <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100">
       <button
         onClick={() => onChange(qty - 1)}
         aria-label="Decrease"
-        className="flex h-8 w-8 items-center justify-center text-lg text-slate-600 hover:bg-slate-50"
+        className="flex h-8 w-8 items-center justify-center rounded-l-lg text-lg text-titleColor hover:bg-neutral-200"
       >
         −
       </button>
-      <span className="w-7 text-center text-sm tabular-nums">{qty}</span>
+      <span className="w-7 text-center font-titleFont text-sm tabular-nums text-titleColor">
+        {qty}
+      </span>
       <button
         onClick={() => onChange(qty + 1)}
         aria-label="Increase"
-        className="flex h-8 w-8 items-center justify-center text-lg text-slate-600 hover:bg-slate-50"
+        className="flex h-8 w-8 items-center justify-center rounded-r-lg text-lg text-titleColor hover:bg-neutral-200"
       >
         +
       </button>

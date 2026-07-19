@@ -29,18 +29,18 @@ export default function ItemPopup({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-t-2xl bg-white p-5 text-slate-800 shadow-2xl sm:rounded-2xl">
+      <div className="relative w-full max-w-sm rounded-t-2xl bg-white p-5 text-titleColor shadow-2xl sm:rounded-2xl">
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-disableTextColor hover:bg-neutral-100"
         >
           ✕
         </button>
 
         {thumb && (
           <div
-            className="mb-3 -mx-5 -mt-5 h-40 cursor-pointer overflow-hidden rounded-t-2xl bg-slate-100"
+            className="mb-3 -mx-5 -mt-5 h-40 cursor-pointer overflow-hidden rounded-t-2xl bg-neutral-100"
             onClick={() => hasMedia(item) && onMedia(item)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -48,24 +48,26 @@ export default function ItemPopup({
           </div>
         )}
 
-        <h3 className="pr-8 text-lg font-semibold">{item.name}</h3>
+        <h3 className="pr-8 font-titleFont text-lg font-semibold">{item.name}</h3>
         {(item.longDesc || item.shortDesc) && (
-          <p className="mt-1 text-sm text-slate-500">{item.longDesc || item.shortDesc}</p>
+          <p className="mt-1 font-descriptionFont text-sm text-descriptionColor">
+            {item.longDesc || item.shortDesc}
+          </p>
         )}
 
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-xl font-bold" style={{ color: "var(--accent)" }}>
+          <span className="font-titleFont text-xl font-bold text-highlightColor">
             {formatPrice(currencySymbol, price)}
           </span>
           {hasDiscount(item) && (
-            <span className="text-sm text-slate-400 line-through">
+            <span className="font-titleFont text-sm text-disableTextColor line-through">
               {formatPrice(currencySymbol, item.price)}
             </span>
           )}
           {hasMedia(item) && (
             <button
               onClick={() => onMedia(item)}
-              className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 hover:bg-slate-200"
+              className="ml-auto rounded-full bg-neutral-100 px-3 py-1 font-descriptionFont text-xs text-titleColor hover:bg-neutral-200"
             >
               {item.media?.some((m) => m.type === "video") ? "▶ Video" : "📷 Photos"}
             </button>
@@ -73,17 +75,19 @@ export default function ItemPopup({
         </div>
 
         <div className="mt-5 flex items-center gap-3">
-          <div className="flex items-center rounded-lg border border-slate-200">
+          <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100">
             <button
               onClick={() => setQty((q) => Math.max(1, q - 1))}
-              className="flex h-10 w-10 items-center justify-center text-xl text-slate-600 hover:bg-slate-50"
+              className="flex h-10 w-10 items-center justify-center rounded-l-lg text-xl text-titleColor hover:bg-neutral-200"
             >
               −
             </button>
-            <span className="w-8 text-center tabular-nums">{qty}</span>
+            <span className="w-8 text-center font-titleFont tabular-nums text-titleColor">
+              {qty}
+            </span>
             <button
               onClick={() => setQty((q) => q + 1)}
-              className="flex h-10 w-10 items-center justify-center text-xl text-slate-600 hover:bg-slate-50"
+              className="flex h-10 w-10 items-center justify-center rounded-r-lg text-xl text-titleColor hover:bg-neutral-200"
             >
               +
             </button>
@@ -98,8 +102,7 @@ export default function ItemPopup({
               });
               onAdd(item, qty);
             }}
-            style={{ background: "var(--accent)" }}
-            className="flex-1 rounded-xl py-3 font-medium text-white transition hover:opacity-90"
+            className="flex-1 rounded-xl bg-highlightColor py-3 font-titleFont font-medium text-white transition hover:opacity-90"
           >
             Add · {formatPrice(currencySymbol, price * qty)}
           </button>

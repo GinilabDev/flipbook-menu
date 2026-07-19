@@ -57,20 +57,20 @@ export default function RestaurantMenuClient() {
   if (status === "ready" && menu) return <MenuExperience menu={menu} />;
 
   return (
-    <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-slate-950 px-4 text-center">
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-neutral-200 px-4 text-center font-titleFont">
       {status === "loading" ? (
         <>
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-indigo-400" />
-          <p className="text-sm text-slate-400">Loading menu…</p>
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-neutral-100 border-t-highlightColor" />
+          <p className="font-descriptionFont text-sm text-disableTextColor">Loading menu…</p>
         </>
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-8">
-          <p className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-titleColor">
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 font-descriptionFont text-sm text-red-700">
             {error}
           </p>
           <button
             onClick={load}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500"
+            className="rounded-xl bg-highlightColor px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
           >
             Retry
           </button>

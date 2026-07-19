@@ -59,7 +59,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 /** Paints the phone's browser chrome in the restaurant's own colour. */
 export async function generateViewport(props: PageProps): Promise<Viewport> {
   const menu = await menuForMeta(props);
-  return { themeColor: menu?.restaurant.brandColor || "#111827" };
+  return { themeColor: menu?.restaurant.brandColor || "#f36805" };
 }
 
 export default function RestaurantMenuPage() {
