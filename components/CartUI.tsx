@@ -185,7 +185,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                 </div>
                 <p className="text-lg font-medium">Order placed!</p>
                 <p className="text-sm text-slate-500">
-                  This is a mock confirmation — the real order flow comes next.
+                  Your order has been sent to the kitchen.
                 </p>
                 <button
                   onClick={() => setOpen(false)}

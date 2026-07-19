@@ -20,11 +20,7 @@ async function menuForMeta({ params, searchParams }: PageProps) {
   const sp = await searchParams;
   const table = first(sp.t) || first(sp.table);
   try {
-    const { menu } = await fetchMenu(slug, table, {
-      revalidate: 30,
-      brandingOnly: true,
-    });
-    return menu;
+    return await fetchMenu(slug, table, { revalidate: 30, brandingOnly: true });
   } catch {
     return null;
   }

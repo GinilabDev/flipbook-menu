@@ -21,9 +21,6 @@ export default function Home() {
           >
             Open Spice Empire menu (Table 1) →
           </Link>
-          <Link href="/restaurant/demo?t=7" className="text-sm text-slate-400 hover:text-slate-200">
-            or open the demo (mock) menu →
-          </Link>
           <p className="mt-1 text-xs text-slate-600">
             A real QR encodes <code className="text-slate-400">/restaurant/&#123;slug&#125;?t=&#123;table&#125;</code>
           </p>
