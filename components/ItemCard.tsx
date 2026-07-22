@@ -48,10 +48,10 @@ export default function ItemCard({
     <button
       type="button"
       onClick={() => onSelect(item)}
-      className="group flex w-full items-stretch gap-3 rounded-xl border border-black/5 bg-white/70 p-2.5 text-left transition hover:border-black/10 hover:bg-white"
+      className="group flex w-full items-stretch gap-3 rounded-xl border border-neutral-200 bg-white/70 p-2.5 text-left transition hover:border-neutral-300 hover:bg-white"
     >
       {thumb && (
-        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100">
+        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mediaUrl(thumb.thumbnail || thumb.url)}
@@ -64,22 +64,22 @@ export default function ItemCard({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start gap-1.5">
-          <span className="truncate font-semibold text-slate-800">
+          <span className="truncate font-titleFont font-semibold text-titleColor">
             {item.name}
           </span>
           <CompactBadges item={item} size={22} />
         </div>
         {item.shortDesc && (
-          <span className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+          <span className="mt-0.5 line-clamp-2 font-descriptionFont text-xs text-disableTextColor">
             {item.shortDesc}
           </span>
         )}
         <div className="mt-auto flex items-center gap-2 pt-1">
-          <span className="font-semibold text-slate-900">
+          <span className="font-titleFont font-semibold text-titleColor">
             {formatPrice(currencySymbol, price)}
           </span>
           {hasDiscount(item) && (
-            <span className="text-xs text-slate-400 line-through">
+            <span className="font-titleFont text-xs text-disableTextColor line-through">
               {formatPrice(currencySymbol, item.price)}
             </span>
           )}
@@ -92,7 +92,7 @@ export default function ItemCard({
                 e.stopPropagation();
                 onMedia(item);
               }}
-              className="ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-slate-100 px-2 text-xs text-slate-600 hover:bg-slate-200"
+              className="ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-neutral-100 px-2 text-xs text-titleColor hover:bg-neutral-200"
             >
               {item.media?.some((m) => m.type === "video") ? "▶" : "📷"}
             </span>
@@ -114,12 +114,11 @@ export default function ItemCard({
           });
           onAdd(item);
         }}
-        style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
-        className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center self-center rounded-full border text-lg transition"
+        className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center self-center rounded-full border border-highlightColor text-lg text-highlightColor transition"
       >
         <FaPlus className="text-base" />
         {qty > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full text-white bg-rose-500 px-1 text-[10px] font-bold">
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-highlightColor px-1 font-titleFont text-[10px] font-bold text-white">
             {qty}
           </span>
         )}
@@ -156,7 +155,7 @@ function CompactRow({
     <button
       type="button"
       onClick={() => onSelect(item)}
-      className="group flex h-full w-full flex-col rounded-lg border border-black/5 bg-white/70 p-2 text-left transition hover:border-black/10 hover:bg-white"
+      className="group flex h-full w-full flex-col rounded-lg border border-neutral-200 bg-white/70 p-2 text-left transition hover:border-neutral-300 hover:bg-white"
     >
       <span className="flex w-full gap-2">
         {thumbUrl && (
@@ -174,13 +173,13 @@ function CompactRow({
         )}
         <span className="min-w-0 flex-1">
           <span className="flex items-start gap-1">
-            <span className="line-clamp-2 min-w-0 text-[11px] font-semibold leading-[14px] text-slate-800">
+            <span className="line-clamp-2 min-w-0 font-titleFont text-[11px] font-semibold leading-[14px] text-titleColor">
               {item.name}
             </span>
             <CompactBadges item={item} />
           </span>
           {item.shortDesc && (
-            <span className="mt-[1px] line-clamp-2 text-[9px] leading-[12px] text-slate-500">
+            <span className="mt-[1px] line-clamp-2 font-descriptionFont text-[9px] leading-[12px] text-disableTextColor">
               {item.shortDesc}
             </span>
           )}
@@ -188,11 +187,11 @@ function CompactRow({
       </span>
 
       <span className="mt-auto flex w-full items-center gap-1.5 pt-1">
-        <span className="text-[11.5px] font-semibold leading-[18px] tabular-nums text-slate-900">
+        <span className="font-titleFont text-[11.5px] font-semibold leading-[18px] tabular-nums text-titleColor">
           {formatPrice(currencySymbol, price)}
         </span>
         {hasDiscount(item) && (
-          <span className="text-[9px] tabular-nums text-slate-400 line-through">
+          <span className="font-titleFont text-[9px] tabular-nums text-disableTextColor line-through">
             {formatPrice(currencySymbol, item.price)}
           </span>
         )}
@@ -225,12 +224,11 @@ function CompactRow({
             });
             onAdd(item);
           }}
-          style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
-          className="relative ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border opacity-80 transition"
+          className="relative ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border border-highlightColor text-highlightColor opacity-80 transition"
         >
           <FaPlus className="text-[8px]" />
           {qty > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-[13px] min-w-[13px] items-center justify-center rounded-full bg-rose-500 px-[3px] text-[8px] font-bold leading-none text-white">
+            <span className="absolute -right-1 -top-1 flex h-[13px] min-w-[13px] items-center justify-center rounded-full bg-highlightColor px-[3px] font-titleFont text-[8px] font-bold leading-none text-white">
               {qty}
             </span>
           )}

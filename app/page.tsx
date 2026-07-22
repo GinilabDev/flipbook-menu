@@ -4,12 +4,12 @@ import Link from "next/link";
 // This landing page is just a friendly demo launcher.
 export default function Home() {
   return (
-    <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950/40 to-slate-950 px-4 py-12 text-center">
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-neutral-200 px-4 py-12 text-center">
       <div className="w-full max-w-xl">
-        <h1 className="bg-gradient-to-r from-indigo-300 via-white to-indigo-300 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl">
+        <h1 className="font-titleFont text-4xl font-bold tracking-tight text-titleColor sm:text-5xl">
           Flipbook Menu
         </h1>
-        <p className="mt-3 text-slate-400">
+        <p className="mt-3 font-descriptionFont text-disableTextColor">
           Scan a table QR to open that restaurant&apos;s menu as a flipbook, add
           items to your cart, and order.
         </p>
@@ -17,15 +17,12 @@ export default function Home() {
         <div className="mt-8 flex flex-col items-center gap-3">
           <Link
             href="/restaurant/spice-empire?t=1"
-            className="rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white transition hover:bg-indigo-500"
+            className="rounded-xl bg-highlightColor px-6 py-3 font-medium text-white transition hover:opacity-90"
           >
             Open Spice Empire menu (Table 1) →
           </Link>
-          <Link href="/restaurant/demo?t=7" className="text-sm text-slate-400 hover:text-slate-200">
-            or open the demo (mock) menu →
-          </Link>
-          <p className="mt-1 text-xs text-slate-600">
-            A real QR encodes <code className="text-slate-400">/restaurant/&#123;slug&#125;?t=&#123;table&#125;</code>
+          <p className="mt-1 font-descriptionFont text-xs text-disableTextColor">
+            A real QR encodes <code className="text-titleColor">/restaurant/&#123;slug&#125;?t=&#123;table&#125;</code>
           </p>
         </div>
       </div>

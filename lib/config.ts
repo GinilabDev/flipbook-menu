@@ -1,6 +1,5 @@
 // Central config. The flipbook always calls its OWN /api/flipbook/* routes,
-// which proxy to the tomafood admin API below (with a mock fallback while the
-// real endpoint is being built).
+// which proxy to the tomafood admin API below.
 
 /** tomafood admin API base, e.g. http://localhost/tomafood-net/api */
 export const ADMIN_API_BASE =
@@ -32,6 +31,3 @@ export function mediaUrl(path?: string | null): string {
 export const ADMIN_RESTAURANT_PATH = "/flipbook/restaurant";
 export const ADMIN_MENU_PATH = "/flipbook/menu";
 export const ADMIN_ORDER_PATH = "/flipbook/order";
-
-/** When true, skip the admin call and always serve mock data. */
-export const USE_MOCK = process.env.USE_MOCK === "1";

@@ -20,11 +20,7 @@ async function menuForMeta({ params, searchParams }: PageProps) {
   const sp = await searchParams;
   const table = first(sp.t) || first(sp.table);
   try {
-    const { menu } = await fetchMenu(slug, table, {
-      revalidate: 30,
-      brandingOnly: true,
-    });
-    return menu;
+    return await fetchMenu(slug, table, { revalidate: 30, brandingOnly: true });
   } catch {
     return null;
   }
@@ -63,7 +59,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
 /** Paints the phone's browser chrome in the restaurant's own colour. */
 export async function generateViewport(props: PageProps): Promise<Viewport> {
   const menu = await menuForMeta(props);
-  return { themeColor: menu?.restaurant.brandColor || "#111827" };
+  return { themeColor: menu?.restaurant.brandColor || "#f36805" };
 }
 
 export default function RestaurantMenuPage() {

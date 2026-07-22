@@ -1,20 +1,17 @@
 // Server-side menu fetch, shared by the /api/flipbook/menu proxy and the
-// restaurant page's generateMetadata. Talks to the tomafood admin API and
-// falls back to mock data when it is unreachable or USE_MOCK is set.
+// restaurant page's generateMetadata. Talks to the tomafood admin API.
+//
+// There is deliberately no offline/demo fallback: a stand-in menu would show
+// customers dishes and prices the kitchen never agreed to, which is worse than
+// showing nothing. When the admin is unreachable this returns null and the
+// caller surfaces the failure.
 
 import type { Category, Menu, MenuItem, Restaurant, Subcategory, TableInfo } from "@/lib/menu";
 import {
   ADMIN_API_BASE,
   ADMIN_MENU_PATH,
   ADMIN_RESTAURANT_PATH,
-  USE_MOCK,
 } from "@/lib/config";
-import { mockMenu } from "@/lib/mock";
-
-export interface MenuResult {
-  menu: Menu;
-  source: "admin" | "mock";
-}
 
 export interface FetchMenuOptions {
   /**
@@ -65,37 +62,32 @@ interface MenuResponse {
   items: MenuItem[];
 }
 
+/** The assembled menu, or null when the admin API can't be reached. */
 export async function fetchMenu(
   restaurant: string,
   table?: string,
   opts: FetchMenuOptions = {},
-): Promise<MenuResult> {
-  if (!USE_MOCK) {
-    const { revalidate, brandingOnly } = opts;
+): Promise<Menu | null> {
+  const { revalidate, brandingOnly } = opts;
 
-    // Independent endpoints — fire both at once rather than paying for them
-    // back to back.
-    const [info, menu] = await Promise.all([
-      adminGet<RestaurantResponse>(ADMIN_RESTAURANT_PATH, restaurant, table, revalidate),
-      brandingOnly
-        ? Promise.resolve(null)
-        : adminGet<MenuResponse>(ADMIN_MENU_PATH, restaurant, table, revalidate),
-    ]);
+  // Independent endpoints — fire both at once rather than paying for them
+  // back to back.
+  const [info, menu] = await Promise.all([
+    adminGet<RestaurantResponse>(ADMIN_RESTAURANT_PATH, restaurant, table, revalidate),
+    brandingOnly
+      ? Promise.resolve(null)
+      : adminGet<MenuResponse>(ADMIN_MENU_PATH, restaurant, table, revalidate),
+  ]);
 
-    // Branding is what makes a menu usable (currency symbol, name, theme), so
-    // it alone decides whether we have a real answer or fall back to mock.
-    if (info?.restaurant) {
-      return {
-        menu: {
-          restaurant: info.restaurant,
-          table: info.table ?? undefined,
-          categories: menu?.categories ?? [],
-          subcategories: menu?.subcategories ?? [],
-          items: menu?.items ?? [],
-        },
-        source: "admin",
-      };
-    }
-  }
-  return { menu: mockMenu(restaurant, table), source: "mock" };
+  // Branding is what makes a menu usable (currency symbol, name, theme), so it
+  // alone decides whether we have an answer at all.
+  if (!info?.restaurant) return null;
+
+  return {
+    restaurant: info.restaurant,
+    table: info.table ?? undefined,
+    categories: menu?.categories ?? [],
+    subcategories: menu?.subcategories ?? [],
+    items: menu?.items ?? [],
+  };
 }

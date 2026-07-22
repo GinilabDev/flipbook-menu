@@ -142,7 +142,7 @@ export default function FlipbookViewer({
   return (
     <div
       ref={rootRef}
-      className="relative flex h-full w-full flex-col bg-gradient-to-b from-neutral-100 to-neutral-200"
+      className="relative flex h-full w-full flex-col bg-neutral-200"
     >
       {/* Toolbar — top-right */}
       <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
@@ -267,11 +267,10 @@ function ToolButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      style={active ? { background: "var(--accent)" } : undefined}
-      className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-md shadow-slate-900/5 backdrop-blur transition ${
+      className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-md shadow-black/5 backdrop-blur transition ${
         active
-          ? "text-white hover:opacity-90"
-          : "bg-white/90 text-slate-600 hover:bg-white hover:text-slate-900"
+          ? "bg-highlightColor text-white hover:opacity-90"
+          : "bg-white/90 text-disableTextColor hover:bg-white hover:text-titleColor"
       }`}
     >
       {children}

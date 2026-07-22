@@ -44,14 +44,21 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
   };
 
   return (
-    // --accent carries the restaurant's theme highlight colour to every
+    // --main-color carries the restaurant's theme highlight colour to every
     // accented control below (cards, headings, cart) without prop-drilling it.
+    // It also drives the `highlightColor` Tailwind token, so `bg-highlightColor`
+    // and friends follow each restaurant's brand automatically.
     <div
-      className="flex h-[100dvh] w-full flex-col bg-slate-100"
-      style={{ "--accent": menu.restaurant.highlightColor || "#4f46e5" } as React.CSSProperties}
+      className="flex h-[100dvh] w-full flex-col bg-neutral-200 font-titleFont"
+      style={
+        {
+          "--main-color":
+            menu.restaurant.highlightColor || menu.restaurant.brandColor || "#f36805",
+        } as React.CSSProperties
+      }
     >
       {/* Header */}
-      <header className="z-30 flex items-center justify-between gap-2 border-b border-black/5 bg-white px-4 py-2.5">
+      <header className="z-30 flex items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           {menu.restaurant.logoUrl ? (
             // Wordmark logos are wide — let it keep its aspect instead of
@@ -65,30 +72,30 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
           ) : (
             <span
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white"
-              style={{ background: menu.restaurant.brandColor || "#111827" }}
+              style={{ background: menu.restaurant.brandColor || "var(--main-color, #f36805)" }}
             >
               🍽
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-800">{menu.restaurant.name}</p>
+            <p className="truncate font-titleFont text-sm font-semibold text-titleColor">{menu.restaurant.name}</p>
             {menu.table && (
-              <p className="truncate text-xs text-slate-400">{menu.table.name || `Table ${menu.table.id}`}</p>
+              <p className="truncate font-descriptionFont text-xs text-disableTextColor">{menu.table.name || `Table ${menu.table.id}`}</p>
             )}
           </div>
         </div>
 
         {/* View toggle */}
-        <div className="flex flex-shrink-0 items-center rounded-lg bg-slate-100 p-0.5 text-sm">
+        <div className="flex flex-shrink-0 items-center rounded-lg bg-neutral-100 p-0.5 text-sm">
           <button
             onClick={() => setView("flip")}
-            className={`rounded-md px-3 py-1 transition ${view === "flip" ? "bg-white font-medium text-slate-800 shadow-sm" : "text-slate-500"}`}
+            className={`rounded-md px-3 py-1 transition ${view === "flip" ? "bg-white font-medium text-titleColor shadow-sm" : "text-disableTextColor"}`}
           >
             📖 Flipbook
           </button>
           <button
             onClick={() => setView("list")}
-            className={`rounded-md px-3 py-1 transition ${view === "list" ? "bg-white font-medium text-slate-800 shadow-sm" : "text-slate-500"}`}
+            className={`rounded-md px-3 py-1 transition ${view === "list" ? "bg-white font-medium text-titleColor shadow-sm" : "text-disableTextColor"}`}
           >
             ☰ List
           </button>

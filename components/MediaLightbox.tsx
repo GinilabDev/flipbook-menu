@@ -80,9 +80,9 @@ export default function MediaLightbox({ item, onClose }: MediaLightboxProps) {
       </div>
 
       <div className="mt-4 flex items-center gap-3 text-white">
-        <span className="font-medium">{item.name}</span>
+        <span className="font-titleFont font-medium">{item.name}</span>
         {media.length > 1 && (
-          <span className="text-sm text-white/60">
+          <span className="font-descriptionFont text-sm text-white/60">
             {Math.min(i, media.length - 1) + 1} / {media.length}
           </span>
         )}
