@@ -26,7 +26,9 @@ export default function ListView({
   return (
     <div className="mx-auto w-full max-w-2xl px-3 pb-28 pt-4">
       {cats.map((category) => (
-        <section key={category.id} className="mb-6">
+        // data-cat-id is what the category picker scrolls to, and what tells it
+        // which category the reader is currently sitting in.
+        <section key={category.id} data-cat-id={category.id} className="mb-6">
           <h2
             className="sticky top-0 z-10 -mx-3 border-b-2 bg-white/95 px-3 py-2 font-titleFont text-lg font-bold text-titleColor backdrop-blur"
             style={{ borderColor: category.color || "#e3e1de" }}

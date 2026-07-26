@@ -64,6 +64,24 @@ body {
   display: none;
 }
 
+/* A category's items all live on one page now, so a long one scrolls inside it.
+   A slim always-there scrollbar is the affordance that says so — the OS default
+   is too heavy sitting on a menu page. */
+.menu-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(38, 38, 38, 0.28) transparent;
+}
+.menu-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.menu-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(38, 38, 38, 0.28);
+}
+
 /* react-pageflip page surface */
 .flip-page {
   position: relative;

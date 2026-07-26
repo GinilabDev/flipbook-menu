@@ -35,10 +35,15 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
       btn.classList.add("cart-bump");
     };
 
-    const onFly = (e: Event) => {
+    const fly = (detail: FlyOrigin, retry: boolean) => {
       const btn = cartBtnRef.current;
-      if (!btn) return;
-      const { x: sx, y: sy, label } = (e as CustomEvent<FlyOrigin>).detail;
+      // The button only exists once the cart is non-empty, so on the very first
+      // add it is still one render away — wait a frame before giving up.
+      if (!btn) {
+        if (retry) requestAnimationFrame(() => fly(detail, false));
+        return;
+      }
+      const { x: sx, y: sy, label } = detail;
 
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
         bump();
@@ -80,6 +85,7 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
       anim.oncancel = () => chip.remove();
     };
 
+    const onFly = (e: Event) => fly((e as CustomEvent<FlyOrigin>).detail, true);
     window.addEventListener(FLY_EVENT, onFly);
     return () => window.removeEventListener(FLY_EVENT, onFly);
   }, []);
@@ -108,36 +114,47 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
 
   return (
     <>
-      {/* Floating cart button */}
-      <button
-        ref={cartBtnRef}
-        onClick={() => {
-          setPlaced(false);
-          setOpen(true);
-        }}
-        aria-label="Open cart"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-highlightColor text-white shadow-lg shadow-black/25 transition hover:opacity-90 sm:h-16 sm:w-16"
-      >
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="9" cy="21" r="1" />
-          <circle cx="20" cy="21" r="1" />
-          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-        </svg>
-        {count > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 font-titleFont text-xs font-bold text-white">
-            {count}
-          </span>
-        )}
-      </button>
+      {/* Floating cart button — centred at the foot of the book, and only once
+          there is something in the cart: an empty cart has nothing to open, and
+          the book now runs edge to edge, so every pixel of chrome covers menu.
+          The wrapper owns the centring transform; `cart-bump` animates the
+          button's own scale and would otherwise fight it. */}
+      {count > 0 && (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
+          <button
+            ref={cartBtnRef}
+            onClick={() => {
+              setPlaced(false);
+              setOpen(true);
+            }}
+            aria-label={`Open cart, ${count} item${count === 1 ? "" : "s"}`}
+            className="pointer-events-auto flex items-center gap-2.5 rounded-full bg-highlightColor py-3 pl-4 pr-5 text-white shadow-lg shadow-black/25 transition hover:opacity-90"
+          >
+            <span className="relative flex items-center">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+              <span className="absolute -right-2.5 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 font-titleFont text-[11px] font-bold text-white">
+                {count}
+              </span>
+            </span>
+            <span className="font-titleFont text-sm font-semibold tabular-nums">
+              {money(currencySymbol, subtotal)}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Drawer */}
       {open && (

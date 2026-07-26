@@ -3,14 +3,20 @@
 import { useState } from "react";
 import { FaFacebookF, FaGoogle, FaInstagram } from "react-icons/fa6";
 import type { LayoutPage, PageBlock } from "@/lib/layout";
-import { HEADER_H, PAGE_H, PAGE_W } from "@/lib/layout";
+import { PAGE_H, PAGE_W } from "@/lib/layout";
 import type { MenuItem, Restaurant } from "@/lib/menu";
 import { formatPrice } from "@/lib/menu";
+import { categoryAccent } from "@/lib/accent";
 import { mediaUrl } from "@/lib/config";
 import ItemCard, { CompactBadges } from "@/components/ItemCard";
 
 interface MenuPageProps {
   page: LayoutPage;
+  /**
+   * The page's width in design px. Variable: the book fills the screen, so the
+   * page's shape follows the viewport while its height stays PAGE_H.
+   */
+  width?: number;
   currencySymbol: string;
   qtyOf: (itemId: string) => number;
   onSelect: (item: MenuItem) => void;
@@ -18,17 +24,18 @@ interface MenuPageProps {
   onAdd: (item: MenuItem) => void;
 }
 
-interface SectionBodyProps extends Omit<MenuPageProps, "page"> {
+interface SectionBodyProps extends Omit<MenuPageProps, "page" | "width"> {
   blocks: PageBlock[];
   itemsPerRow: number;
 }
 
 /**
- * One flipbook page (cover / section / back / blank), drawn in the fixed
- * PAGE_W × PAGE_H design space that FlipbookViewer scales to fit the screen.
+ * One flipbook page (cover / section / back / blank), drawn PAGE_H tall in
+ * design px — a space FlipbookViewer scales to whatever the screen gives it.
  */
 export default function MenuPage({
   page,
+  width = PAGE_W,
   currencySymbol,
   qtyOf,
   onSelect,
@@ -41,6 +48,7 @@ export default function MenuPage({
     const fg = readableOn(bg);
     return (
       <Sheet
+        width={width}
         className="items-center justify-center gap-4 p-8 text-center"
         style={{ background: bg, color: fg }}
       >
@@ -62,9 +70,12 @@ export default function MenuPage({
           </p>
         )}
         {r.phone && (
-          <p className="font-descriptionFont text-[13px] font-medium opacity-90">
+          <a
+            href={`tel:${r.phone}`}
+            className="font-descriptionFont text-[13px] font-medium opacity-90"
+          >
             {r.phone}
-          </p>
+          </a>
         )}
         <p className="mt-5 font-descriptionFont text-sm opacity-75">
           Tap any item to add it to your order
@@ -103,6 +114,7 @@ export default function MenuPage({
 
     return (
       <Sheet
+        width={width}
         className="items-center justify-center gap-3 p-8 text-center"
         style={{ background: bg, color: fg }}
       >
@@ -118,14 +130,20 @@ export default function MenuPage({
           </p>
         )}
         {r.phone && (
-          <p className="font-descriptionFont text-[13px] font-medium opacity-90">
+          <a
+            href={`tel:${r.phone}`}
+            className="font-descriptionFont text-[13px] font-medium opacity-90"
+          >
             {r.phone}
-          </p>
+          </a>
         )}
         {r.email && (
-          <p className="font-descriptionFont text-[11px] opacity-70">
+          <a
+            href={`mailto:${r.email}`}
+            className="font-descriptionFont text-[11px] opacity-70"
+          >
             {r.email}
-          </p>
+          </a>
         )}
 
         {links.length > 0 && (
@@ -154,38 +172,30 @@ export default function MenuPage({
   }
 
   if (page.kind === "blank") {
-    return <Sheet className="bg-white" />;
+    return <Sheet width={width} className="bg-white" />;
   }
 
-  const { category, blocks, itemsPerRow, continued, part, partCount } = page;
+  const { category, blocks, itemsPerRow, itemCount } = page;
   // Online categories carry no colour of their own, so give each section its
   // own accent off the palette — a menu of identically-underlined pages reads
   // flat. The category's own colour always wins when the admin has set one.
-  const accent = category.color || accentFor(category.id);
+  const accent = categoryAccent(category);
 
   return (
-    <Sheet className="bg-white">
-      {/* Section header — fixed height, matching HEADER_H in lib/layout.ts. */}
-      <div
-        className="flex flex-shrink-0 flex-col justify-end px-4 pb-2 pt-3.5"
-        style={{ height: HEADER_H }}
-      >
+    <Sheet width={width} className="bg-white">
+      {/* Section header. Sized to its own content rather than pinned to a fixed
+          height — a category with no description used to pay for the line it
+          didn't have as dead space above the title. */}
+      <div className="flex flex-shrink-0 flex-col px-4 pb-1.5 pt-2">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="truncate font-titleFont text-[17px] font-bold uppercase tracking-wide text-titleColor">
             {category.name}
-            {continued && (
-              <span className="ml-1 text-[11px] font-normal normal-case tracking-normal text-disableTextColor">
-                (cont.)
-              </span>
-            )}
           </h2>
-          {partCount > 1 && (
-            <span className="flex-shrink-0 font-titleFont text-[10px] tabular-nums text-disableTextColor">
-              {part}/{partCount}
-            </span>
-          )}
+          <span className="flex-shrink-0 font-titleFont text-[10px] tabular-nums text-disableTextColor">
+            {itemCount} item{itemCount === 1 ? "" : "s"}
+          </span>
         </div>
-        {category.description && !continued && (
+        {category.description && (
           <p className="mt-0.5 line-clamp-1 font-descriptionFont text-[9.5px] italic leading-[12px] text-disableTextColor">
             {category.description}
           </p>
@@ -210,9 +220,9 @@ export default function MenuPage({
 }
 
 /**
- * The page's block stack. Subcategories start collapsed and open on click, the
- * way the tomafood web menu does — so an open one can make the content taller
- * than the fixed page, and the stack scrolls.
+ * The page's block stack — the whole category, however long. The page itself is
+ * a fixed size, so this is the part that scrolls. Subcategories start collapsed
+ * and open on click, the way the tomafood web menu does.
  */
 function SectionBody({
   blocks,
@@ -246,36 +256,47 @@ function SectionBody({
   );
 
   return (
-    // pb clears the viewer's flip arrows; keep it at FOOTER_H.
-    <div
-      data-col
-      className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain px-2.5 pb-[46px]"
-    >
-      {blocks.map((block) => {
-        if (block.kind === "row")
-          return <div key={block.key}>{grid(block.items)}</div>;
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* pb clears the viewer's flip arrows, which are drawn over the page's
+          bottom corners — without it the last row hides under one. */}
+      <div
+        data-col
+        className="menu-scroll flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain px-2.5 pb-[46px]"
+      >
+        {blocks.map((block) => {
+          if (block.kind === "row")
+            return <div key={block.key}>{grid(block.items)}</div>;
 
-        const open = expandedId === block.subcategory.id;
-        return (
-          <div key={block.key}>
-            <SubcategoryHead
-              name={block.subcategory.name}
-              description={block.subcategory.description}
-              badges={block.subcategory}
-              fromPrice={block.fromPrice}
-              currencySymbol={currencySymbol}
-              count={block.items.length}
-              open={open}
-              onToggle={() =>
-                setExpandedId((id) =>
-                  id === block.subcategory.id ? null : block.subcategory.id,
-                )
-              }
-            />
-            {open && <div className="mt-1.5">{grid(block.items)}</div>}
-          </div>
-        );
-      })}
+          const open = expandedId === block.subcategory.id;
+          return (
+            <div key={block.key}>
+              <SubcategoryHead
+                name={block.subcategory.name}
+                description={block.subcategory.description}
+                badges={block.subcategory}
+                fromPrice={block.fromPrice}
+                currencySymbol={currencySymbol}
+                count={block.items.length}
+                open={open}
+                onToggle={() =>
+                  setExpandedId((id) =>
+                    id === block.subcategory.id ? null : block.subcategory.id,
+                  )
+                }
+              />
+              {open && <div className="mt-1.5">{grid(block.items)}</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fade at the foot of the page, so a category that runs past the bottom
+          looks cut off mid-scroll rather than ending there. Invisible when the
+          content stops short — it is white on white. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/85 to-transparent"
+      />
     </div>
   );
 }
@@ -334,60 +355,22 @@ function readableOn(hex: string): string {
   return luminance > 0.45 ? "#262626" : "#ffffff";
 }
 
-/**
- * Fallback section accents, for menus whose categories carry no colour of their
- * own. Muted mid-tones — they sit under a heading on white, so they need to read
- * as a divider rather than compete with the item cards.
- */
-const SECTION_ACCENTS = [
-  "#c2703d", // terracotta
-  "#7d8c5c", // olive
-  "#4f7a8c", // teal
-  "#a8546b", // rosewood
-  "#8a6ea8", // plum
-  "#b0863c", // ochre
-  "#5b7f6d", // sage
-  "#96604a", // clay
-  "#d9a05b", // mustard
-  "#6b8ca3", // steel
-  "#a88289", // mauve
-  "#a65330", // rust
-  "#3d5c4a", // pine
-  "#bda68c", // stone
-  "#616d7a", // slate
-  "#867f99", // lavender
-  "#b56b45", // copper
-  "#6f7a46", // moss
-];
-
-/**
- * Pick a stable accent for a category from `SECTION_ACCENTS`.
- *
- * Deliberately a hash of the id rather than `Math.random()`: a category that
- * spans several pages ("cont." parts) must keep one colour across all of them,
- * the server and client renders have to agree, and the colour can't change
- * every time the page re-renders on a flip. Same id in, same colour out.
- */
-function accentFor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return SECTION_ACCENTS[Math.abs(h) % SECTION_ACCENTS.length];
-}
-
-/** Fixed-size page canvas. */
+/** The page canvas: PAGE_H tall in design px, as wide as the screen makes it. */
 function Sheet({
   children,
+  width,
   className = "",
   style,
 }: {
   children?: React.ReactNode;
+  width: number;
   className?: string;
   style?: React.CSSProperties;
 }) {
   return (
     <div
       className={`flex flex-col overflow-hidden ${className}`}
-      style={{ width: PAGE_W, height: PAGE_H, ...style }}
+      style={{ width, height: PAGE_H, ...style }}
     >
       {children}
     </div>
