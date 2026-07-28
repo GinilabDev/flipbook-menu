@@ -18,7 +18,6 @@ interface MenuPageProps {
    */
   width?: number;
   currencySymbol: string;
-  qtyOf: (itemId: string) => number;
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
   onAdd: (item: MenuItem) => void;
@@ -37,7 +36,6 @@ export default function MenuPage({
   page,
   width = PAGE_W,
   currencySymbol,
-  qtyOf,
   onSelect,
   onMedia,
   onAdd,
@@ -210,7 +208,6 @@ export default function MenuPage({
         blocks={blocks}
         itemsPerRow={itemsPerRow}
         currencySymbol={currencySymbol}
-        qtyOf={qtyOf}
         onSelect={onSelect}
         onMedia={onMedia}
         onAdd={onAdd}
@@ -228,7 +225,6 @@ function SectionBody({
   blocks,
   itemsPerRow,
   currencySymbol,
-  qtyOf,
   onSelect,
   onMedia,
   onAdd,
@@ -246,7 +242,6 @@ function SectionBody({
           variant="compact"
           item={item}
           currencySymbol={currencySymbol}
-          qty={qtyOf(item.id)}
           onSelect={onSelect}
           onMedia={onMedia}
           onAdd={onAdd}

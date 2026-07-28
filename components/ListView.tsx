@@ -6,7 +6,6 @@ import ItemCard, { CompactBadges } from "@/components/ItemCard";
 
 interface ListViewProps {
   menu: Menu;
-  qtyOf: (itemId: string) => number;
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
   onAdd: (item: MenuItem) => void;
@@ -15,7 +14,6 @@ interface ListViewProps {
 /** Fast scrollable alternative to the flipbook (mobile-friendly). */
 export default function ListView({
   menu,
-  qtyOf,
   onSelect,
   onMedia,
   onAdd,
@@ -72,7 +70,6 @@ export default function ListView({
                     key={item.id}
                     item={item}
                     currencySymbol={sym}
-                    qty={qtyOf(item.id)}
                     onSelect={onSelect}
                     onMedia={onMedia}
                     onAdd={onAdd}

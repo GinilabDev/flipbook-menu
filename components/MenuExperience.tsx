@@ -9,7 +9,7 @@ import {
   pageIndexOfCategory,
 } from "@/lib/layout";
 import { mediaUrl } from "@/lib/config";
-import { useCart } from "@/lib/cart";
+import { useCartActions } from "@/lib/cart";
 import type { FlipbookHandle } from "@/components/FlipbookViewer";
 import FlipbookViewer from "@/components/FlipbookViewer";
 import CategoryModal from "@/components/CategoryModal";
@@ -27,7 +27,7 @@ const MIN_SKELETON_MS = 320;
 const SKELETON_TIMEOUT_MS = 2500;
 
 export default function MenuExperience({ menu }: { menu: Menu }) {
-  const { add, qtyOf } = useCart();
+  const { add } = useCartActions();
   const [portrait, setPortrait] = useState(false);
   const [view, setView] = useState<ViewMode>("flip");
   const [popupItem, setPopupItem] = useState<MenuItem | null>(null);
@@ -175,12 +175,19 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
     };
   }, [view, endSkeleton]);
 
-  const handlers = {
-    qtyOf,
-    onSelect: (item: MenuItem) => setPopupItem(item),
-    onMedia: (item: MenuItem) => setMediaItem(item),
-    onAdd: (item: MenuItem) => add(item, 1),
-  };
+  // Stable for the life of the page. These reach the flipbook's page elements,
+  // and react-pageflip rebuilds the book's DOM whenever those elements change
+  // identity — so a new handler object on every render would tear the book down
+  // mid-flip. `add` comes from the actions context precisely because it doesn't
+  // change when the cart does. See components/FlipbookViewer.tsx#bookPages.
+  const handlers = useMemo(
+    () => ({
+      onSelect: (item: MenuItem) => setPopupItem(item),
+      onMedia: (item: MenuItem) => setMediaItem(item),
+      onAdd: (item: MenuItem) => add(item, 1),
+    }),
+    [add],
+  );
 
   return (
     // --main-color carries the restaurant's theme highlight colour to every
@@ -243,21 +250,19 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
             disabled={entries.length === 0}
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-200 bg-white text-titleColor shadow-sm transition hover:bg-neutral-100 active:scale-95 disabled:opacity-40"
           >
-            {/* Grid icon */}
+            {/* category icon */}
             <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+              width="20"
+              height="20"
+              className="c-pieIcon c-pieIcon--list"
             >
-              <rect x="3" y="3" width="7" height="7" rx="1.5" />
-              <rect x="14" y="3" width="7" height="7" rx="1.5" />
-              <rect x="3" y="14" width="7" height="7" rx="1.5" />
-              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              <path d="M2.313 11.938a1.312 1.312 0 1 0 0-2.625 1.312 1.312 0 0 0 0 2.624Z"></path>
+              <path d="M14.125 4.719h-8.75V6.03h8.348l.402-1.312Z"></path>
+              <path d="M2.313 6.688a1.313 1.313 0 1 0 0-2.626 1.313 1.313 0 0 0 0 2.625Z"></path>
+              <path d="M12.506 9.969H5.375v1.312h6.729l.402-1.312Z"></path>
             </svg>
           </button>
 
@@ -265,7 +270,9 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
           <button
             onClick={() => setView(view === "flip" ? "list" : "flip")}
             aria-label={
-              view === "flip" ? "Switch to list view" : "Switch to flipbook view"
+              view === "flip"
+                ? "Switch to list view"
+                : "Switch to flipbook view"
             }
             title={view === "flip" ? "List view" : "Flipbook view"}
             className="flex h-10 w-10 items-center justify-center rounded-lg text-white shadow-sm transition active:scale-95"
@@ -325,7 +332,9 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
           <div
             aria-hidden
             className={`absolute inset-0 z-20 overflow-hidden bg-neutral-200 transition-opacity duration-300 ${
-              skeleton === "on" ? "opacity-100" : "pointer-events-none opacity-0"
+              skeleton === "on"
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
             }`}
           >
             <ViewSkeleton mode={view} portrait={portrait} />

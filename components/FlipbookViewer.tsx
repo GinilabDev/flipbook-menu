@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -20,7 +21,6 @@ const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false });
 interface FlipbookViewerProps {
   pages: LayoutPage[];
   currencySymbol: string;
-  qtyOf: (itemId: string) => number;
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
   onAdd: (item: MenuItem) => void;
@@ -47,26 +47,19 @@ const Page = forwardRef<
 Page.displayName = "Page";
 
 const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function FlipbookViewer(
-  {
-    pages,
-    currencySymbol,
-    qtyOf,
-    onSelect,
-    onMedia,
-    onAdd,
-    onReady,
-    onPageChange,
-  },
+  { pages, currencySymbol, onSelect, onMedia, onAdd, onReady, onPageChange },
   ref,
 ) {
   const bookRef = useRef<any>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const slideRef = useRef<HTMLDivElement>(null);
   const flipAudioRef = useRef<HTMLAudioElement | null>(null);
   const [current, setCurrent] = useState(0);
-  // Where the book *will* be once the turn in flight finishes. The book's own
-  // page event only fires when the flip lands, which is far too late to start
-  // sliding the closed book open — the slide has to run alongside the turn.
-  const [settling, setSettling] = useState(0);
+  // `current` again, readable from a handler without making that handler depend
+  // on it — see `slideTo` for why nothing may set state while a turn is running.
+  const currentRef = useRef(0);
+  // Where the book *will* sit once the turn in flight lands.
+  const slideRefIdx = useRef(0);
   const [portrait, setPortrait] = useState(false);
   const [dims, setDims] = useState({ width: 380, height: 528 });
   const [measured, setMeasured] = useState(false);
@@ -118,17 +111,63 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
     };
   }, [measured, onReady]);
 
+  // ---- Sliding the closed book ----
+  // A closed book is one page wide, not two, so on a spread the covers sit
+  // centred on screen and the book slides out from under them as it opens.
+  const offsetFor = useCallback(
+    (idx: number) => {
+      if (portrait) return 0;
+      if (idx <= 0) return -dims.width / 2; // front cover: lone right-hand page
+      if (idx >= total - 1) return dims.width / 2; // back cover: lone left page
+      return 0;
+    },
+    [portrait, dims.width, total],
+  );
+
+  /**
+   * Slide the book to where page `idx` wants it — by writing the style, NOT by
+   * setting state.
+   *
+   * This has to happen the moment a turn starts (the book's own page event only
+   * fires when the turn lands, far too late to slide the cover open with it),
+   * and a re-render at that moment is exactly what must not happen: see
+   * `bookPages` below for what react-pageflip does to a turn in flight.
+   */
+  const slideTo = useCallback(
+    (idx: number) => {
+      slideRefIdx.current = idx;
+      const el = slideRef.current;
+      if (el) el.style.transform = `translateX(${offsetFor(idx)}px)`;
+    },
+    [offsetFor],
+  );
+
+  // Re-assert it whenever the answer changes — a resize, or a rotate.
+  useEffect(() => slideTo(slideRefIdx.current), [slideTo]);
+
   // ---- Navigation ----
   // A spread covers two pages, so a turn moves the left-hand index by two —
   // except off the cover and onto the back cover, which stand alone.
   const flipNext = useCallback(() => {
-    setSettling(current === 0 ? 1 : Math.min(total - 1, current + 2));
+    const at = currentRef.current;
+    slideTo(at === 0 ? 1 : Math.min(total - 1, at + 2));
     bookRef.current?.pageFlip()?.flipNext();
-  }, [current, total]);
+  }, [slideTo, total]);
   const flipPrev = useCallback(() => {
-    setSettling(current <= 1 ? 0 : Math.max(0, current - 2));
+    const at = currentRef.current;
+    slideTo(at <= 1 ? 0 : Math.max(0, at - 2));
     bookRef.current?.pageFlip()?.flipPrev();
-  }, [current]);
+  }, [slideTo]);
+
+  /** The one place page position lands in React state — never mid-turn. */
+  const settleAt = useCallback(
+    (index: number) => {
+      currentRef.current = index;
+      setCurrent(index);
+      slideTo(index);
+    },
+    [slideTo],
+  );
 
   // Jumping to a category's page.
   //
@@ -148,13 +187,11 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
         const pf = bookRef.current?.pageFlip?.();
         if (!pf) return;
         pf.turnToPage(index);
-        const landed = pf.getCurrentPageIndex?.() ?? index;
-        setCurrent(landed);
-        setSettling(landed);
+        settleAt(pf.getCurrentPageIndex?.() ?? index);
         onPageChange?.(index);
       },
     }),
-    [onPageChange],
+    [onPageChange, settleAt],
   );
 
   useEffect(() => {
@@ -179,15 +216,20 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
     }
   }, []);
 
-  const onFlip = useCallback(
+  // page-flip registers its 'flip' listener once, when the pages are loaded, so
+  // the callback it holds must not go stale. Keep the identity fixed and read
+  // the live implementation through a ref.
+  const onFlipImpl = useCallback(
     (e: { data: number }) => {
-      setCurrent(e.data);
-      setSettling(e.data);
+      settleAt(e.data);
       onPageChange?.(e.data);
       playFlipSound();
     },
-    [onPageChange, playFlipSound],
+    [onPageChange, playFlipSound, settleAt],
   );
+  const onFlipRef = useRef(onFlipImpl);
+  onFlipRef.current = onFlipImpl;
+  const onFlip = useCallback((e: { data: number }) => onFlipRef.current(e), []);
 
   // A page fills the screen, so its shape is the viewport's, not a fixed
   // rectangle. Type is scaled off the page HEIGHT — scaling off the width would
@@ -197,17 +239,52 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   const scale = dims.height / PAGE_H;
   const designWidth = Math.round(dims.width / scale);
 
-  // A closed book is one page wide, not two — so on a spread the covers sit
-  // centred on screen and the book slides out from under them as it opens.
-  // Driven by `settling` rather than `current` so the slide runs *with* the
-  // page turn instead of snapping into place after it.
-  const offset = portrait
-    ? 0
-    : settling <= 0
-      ? -dims.width / 2 // front cover: the lone right-hand page
-      : settling >= total - 1
-        ? dims.width / 2 // back cover: the lone left-hand page
-        : 0;
+  // The book's pages, built ONCE per (pages, size, handlers) — never per flip.
+  //
+  // react-pageflip watches `children` by identity: hand it a freshly-built array
+  // and it destroys the page collection, reloads the renderer and re-shows the
+  // current page (page-flip's `updateFromHtml`). Doing that while a turn is in
+  // flight snaps the half-turned page back and restarts it — the cover appearing
+  // to open, close, then open again. So this array must survive the state
+  // changes a flip causes (`current`, `settling`) and every re-render of the
+  // parent. It legitimately rebuilds when the book itself changes: new menu
+  // pages, or a new size after a resize/rotate.
+  //
+  // Item quantities deliberately do NOT appear here — each card subscribes to
+  // the cart itself (lib/cart.tsx#useItemQty), so adding an item repaints one
+  // badge instead of rebuilding the whole book.
+  const bookPages = useMemo(
+    () =>
+      pages.map((p, i) => (
+        // The spine shadow marks the page's inner edge. On a spread that
+        // alternates — left page, right page. A phone shows one page at a time
+        // with the spine always down its left side, so every page there is a
+        // "right" page; alternating would flip the shadow to the outer edge on
+        // every other turn.
+        <Page key={p.key} side={portrait || i % 2 === 0 ? "right" : "left"}>
+          {/* Pages are authored PAGE_H tall in design px and scaled to the
+              book, so type keeps its proportions at any size. */}
+          <div
+            style={{
+              width: designWidth,
+              height: PAGE_H,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            <MenuPage
+              page={p}
+              width={designWidth}
+              currencySymbol={currencySymbol}
+              onSelect={onSelect}
+              onMedia={onMedia}
+              onAdd={onAdd}
+            />
+          </div>
+        </Page>
+      )),
+    [pages, portrait, designWidth, scale, currencySymbol, onSelect, onMedia, onAdd],
+  );
 
   return (
     <div className="relative flex h-full w-full flex-col bg-neutral-200">
@@ -220,11 +297,14 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
           className={`transition-opacity duration-200 ease-out ${measured ? "opacity-100" : "opacity-0"}`}
         >
           <div
+            ref={slideRef}
             className="relative transition-transform duration-700 ease-in-out"
             style={{
               width: (portrait ? 1 : 2) * dims.width,
               height: dims.height,
-              transform: `translateX(${offset}px)`,
+              // Read from the ref so a re-render mid-turn re-states where the
+              // book is *going*, not where it was when the turn began.
+              transform: `translateX(${offsetFor(slideRefIdx.current)}px)`,
             }}
           >
             {/* @ts-expect-error react-pageflip types are loose under dynamic import */}
@@ -250,38 +330,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
               mobileScrollSupport
               onFlip={onFlip}
             >
-              {pages.map((p, i) => (
-                // The spine shadow marks the page's inner edge. On a spread
-                // that alternates — left page, right page. A phone shows one
-                // page at a time with the spine always down its left side, so
-                // every page there is a "right" page; alternating would flip
-                // the shadow to the outer edge on every other turn.
-                <Page
-                  key={p.key}
-                  side={portrait || i % 2 === 0 ? "right" : "left"}
-                >
-                  {/* Pages are authored PAGE_H tall in design px and scaled to
-                      the book, so type keeps its proportions at any size. */}
-                  <div
-                    style={{
-                      width: designWidth,
-                      height: PAGE_H,
-                      transform: `scale(${scale})`,
-                      transformOrigin: "top left",
-                    }}
-                  >
-                    <MenuPage
-                      page={p}
-                      width={designWidth}
-                      currencySymbol={currencySymbol}
-                      qtyOf={qtyOf}
-                      onSelect={onSelect}
-                      onMedia={onMedia}
-                      onAdd={onAdd}
-                    />
-                  </div>
-                </Page>
-              ))}
+              {bookPages}
             </HTMLFlipBook>
 
             {/* Heyzine-style page arrows, overlaid on the page's inner bottom

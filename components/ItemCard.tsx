@@ -4,11 +4,11 @@ import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
 import { flyToCart } from "@/lib/flyToCart";
+import { useItemQty } from "@/lib/cart";
 import { FaPlus } from "react-icons/fa6";
 interface ItemCardProps {
   item: MenuItem;
   currencySymbol: string;
-  qty?: number;
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
   onAdd: (item: MenuItem) => void;
@@ -20,12 +20,15 @@ interface ItemCardProps {
 export default function ItemCard({
   item,
   currencySymbol,
-  qty = 0,
   onSelect,
   onMedia,
   onAdd,
   variant = "card",
 }: ItemCardProps) {
+  // Subscribed here rather than passed in: the badge has to update on every
+  // add, and a prop would force the whole page (and the book's DOM) to rebuild
+  // for it. See lib/cart.tsx#useItemQty.
+  const qty = useItemQty(item.id);
   const thumb = item.media?.find((m) => m.type === "image");
   const price = effectivePrice(item);
 

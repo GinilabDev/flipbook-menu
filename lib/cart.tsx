@@ -78,7 +78,23 @@ interface CartContextValue {
   qtyOf: (itemId: string) => number;
 }
 
+/** Mutating the cart. Stable for the provider's whole life — see below. */
+interface CartActions {
+  add: (item: MenuItem, qty?: number) => void;
+  setQty: (itemId: string, qty: number) => void;
+  remove: (itemId: string) => void;
+  clear: () => void;
+}
+
 const CartContext = createContext<CartContextValue | null>(null);
+/**
+ * Actions live in their own context so that adding an item doesn't hand every
+ * consumer a new `add`/`setQty`. That matters more than it looks: the flipbook
+ * passes these handlers down into its page elements, and react-pageflip tears
+ * the whole book's DOM down and rebuilds it whenever those elements change
+ * identity — mid-flip, that reads as the page snapping backwards.
+ */
+const CartActionsContext = createContext<CartActions | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { lines: {} });
@@ -102,25 +118,53 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [state]);
 
+  // `dispatch` never changes, so neither do these.
+  const actions = useMemo<CartActions>(
+    () => ({
+      add: (item, qty) => dispatch({ type: "add", item, qty }),
+      setQty: (itemId, qty) => dispatch({ type: "setQty", itemId, qty }),
+      remove: (itemId) => dispatch({ type: "remove", itemId }),
+      clear: () => dispatch({ type: "clear" }),
+    }),
+    [],
+  );
+
   const value = useMemo<CartContextValue>(() => {
     const lines = Object.values(state.lines);
     return {
       lines,
       count: lines.reduce((n, l) => n + l.qty, 0),
       subtotal: lines.reduce((s, l) => s + effectivePrice(l.item) * l.qty, 0),
-      add: (item, qty) => dispatch({ type: "add", item, qty }),
-      setQty: (itemId, qty) => dispatch({ type: "setQty", itemId, qty }),
-      remove: (itemId) => dispatch({ type: "remove", itemId }),
-      clear: () => dispatch({ type: "clear" }),
+      ...actions,
       qtyOf: (itemId) => state.lines[itemId]?.qty ?? 0,
     };
-  }, [state]);
+  }, [state, actions]);
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartActionsContext.Provider value={actions}>
+      <CartContext.Provider value={value}>{children}</CartContext.Provider>
+    </CartActionsContext.Provider>
+  );
 }
 
 export function useCart(): CartContextValue {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error("useCart must be used within <CartProvider>");
   return ctx;
+}
+
+/** Just the mutators — the reference never changes, so it is safe to hold. */
+export function useCartActions(): CartActions {
+  const ctx = useContext(CartActionsContext);
+  if (!ctx) throw new Error("useCartActions must be used within <CartProvider>");
+  return ctx;
+}
+
+/**
+ * How many of one item are in the cart. Read here, inside the card, rather than
+ * threaded down from the page — a card can then update its badge without the
+ * page above it re-rendering (and rebuilding the book's DOM).
+ */
+export function useItemQty(itemId: string): number {
+  return useCart().qtyOf(itemId);
 }
