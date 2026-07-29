@@ -10,9 +10,11 @@ import {
 } from "@/lib/layout";
 import { mediaUrl } from "@/lib/config";
 import { useCartActions } from "@/lib/cart";
+import { useIsPortrait } from "@/lib/useViewport";
 import type { FlipbookHandle } from "@/components/FlipbookViewer";
 import FlipbookViewer from "@/components/FlipbookViewer";
 import CategoryModal from "@/components/CategoryModal";
+import SearchOverlay from "@/components/SearchOverlay";
 import ListView from "@/components/ListView";
 import ItemPopup from "@/components/ItemPopup";
 import MediaLightbox from "@/components/MediaLightbox";
@@ -28,12 +30,14 @@ const SKELETON_TIMEOUT_MS = 2500;
 
 export default function MenuExperience({ menu }: { menu: Menu }) {
   const { add } = useCartActions();
-  const [portrait, setPortrait] = useState(false);
+  const portrait = useIsPortrait();
   const [view, setView] = useState<ViewMode>("flip");
   const [popupItem, setPopupItem] = useState<MenuItem | null>(null);
   const [mediaItem, setMediaItem] = useState<MenuItem | null>(null);
   const [skeleton, setSkeleton] = useState<"on" | "fading" | "off">("on");
   const [catOpen, setCatOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const bookRef = useRef<FlipbookHandle>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -42,15 +46,6 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
   const timers = useRef<number[]>([]);
 
   const sym = menu.restaurant.currencySymbol;
-
-  // Phones show one page at a time, so cards go one-up there. Keep this
-  // breakpoint in step with FlipbookViewer's.
-  useEffect(() => {
-    const check = () => setPortrait(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const pages = useMemo(
     () => buildPages(menu, { itemsPerRow: itemsPerRowFor(portrait) }),
@@ -180,6 +175,10 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
   // identity — so a new handler object on every render would tear the book down
   // mid-flip. `add` comes from the actions context precisely because it doesn't
   // change when the cart does. See components/FlipbookViewer.tsx#bookPages.
+  /** Any sheet that takes over the screen — and with it, the keyboard. */
+  const overlayOpen =
+    searchOpen || catOpen || cartOpen || !!popupItem || !!mediaItem;
+
   const handlers = useMemo(
     () => ({
       onSelect: (item: MenuItem) => setPopupItem(item),
@@ -241,6 +240,28 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-2">
+          {/* Search — the only practical way through a 600-dish menu */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search the menu"
+            aria-haspopup="dialog"
+            title="Search"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-200 bg-white text-titleColor shadow-sm transition hover:bg-neutral-100 active:scale-95"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
+
           {/* Categories — the menu's table of contents */}
           <button
             onClick={() => setCatOpen(true)}
@@ -320,6 +341,10 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
             currencySymbol={sym}
             onReady={endSkeleton}
             onPageChange={handlePageChange}
+            // An overlay owns the keyboard while it is open — otherwise the
+            // arrow keys that move the caret in the search box also turn pages
+            // in the book behind it.
+            keyboardNav={!overlayOpen}
             {...handlers}
           />
         ) : (
@@ -343,6 +368,14 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
       </main>
 
       {/* Overlays */}
+      <SearchOverlay
+        open={searchOpen}
+        menu={menu}
+        onClose={() => setSearchOpen(false)}
+        onGoToCategory={goToCategory}
+        escapeEnabled={!popupItem && !mediaItem}
+        {...handlers}
+      />
       <CategoryModal
         open={catOpen}
         entries={entries}
@@ -369,7 +402,11 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
         <MediaLightbox item={mediaItem} onClose={() => setMediaItem(null)} />
       )}
 
-      <CartUI restaurant={menu.restaurant} table={menu.table} />
+      <CartUI
+        restaurant={menu.restaurant}
+        table={menu.table}
+        onOpenChange={setCartOpen}
+      />
     </div>
   );
 }

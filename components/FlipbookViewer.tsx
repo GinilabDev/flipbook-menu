@@ -8,11 +8,13 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import dynamic from "next/dynamic";
 import type { LayoutPage } from "@/lib/layout";
 import { PAGE_H } from "@/lib/layout";
 import type { MenuItem } from "@/lib/menu";
+import { useIsPortrait } from "@/lib/useViewport";
 import MenuPage from "@/components/MenuPage";
 
 // react-pageflip touches `window` on import → load client-side only.
@@ -28,11 +30,75 @@ interface FlipbookViewerProps {
   onReady?: () => void;
   /** Fired whenever the visible page changes — drives the category picker. */
   onPageChange?: (index: number) => void;
+  /** False while an overlay is open, so its typing doesn't turn pages. */
+  keyboardNav?: boolean;
 }
 
 /** Imperative controls the parent needs — jumping to a category's page. */
 export interface FlipbookHandle {
   goToPage: (index: number) => void;
+}
+
+/**
+ * Which pages are close enough to the reader to be worth building.
+ *
+ * This cannot be a prop. The page in view changes on every turn, and handing the
+ * book a freshly-built children array is precisely what makes react-pageflip
+ * tear its DOM down mid-flip (see `bookPages`). So the current page is published
+ * as a store instead: pages subscribe to it, the array never changes, and only
+ * the two or three pages crossing the boundary re-render.
+ */
+interface NearStore {
+  subscribe: (listener: () => void) => () => void;
+  isNear: (index: number) => boolean;
+  set: (current: number, settling: number, buffer: number) => void;
+}
+
+function createNearStore(): NearStore {
+  const listeners = new Set<() => void>();
+  let current = 0;
+  let settling = 0;
+  let buffer = 3;
+  return {
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    isNear(index) {
+      return (
+        Math.abs(index - current) <= buffer || Math.abs(index - settling) <= buffer
+      );
+    },
+    set(nextCurrent, nextSettling, nextBuffer) {
+      if (
+        nextCurrent === current &&
+        nextSettling === settling &&
+        nextBuffer === buffer
+      ) {
+        return;
+      }
+      current = nextCurrent;
+      settling = nextSettling;
+      buffer = nextBuffer;
+      listeners.forEach((l) => l());
+    },
+  };
+}
+
+/** A page that builds its contents only once the reader is near it. */
+function LazyPage({
+  store,
+  index,
+  ...pageProps
+}: { store: NearStore; index: number } & React.ComponentProps<typeof MenuPage>) {
+  const near = useSyncExternalStore(
+    store.subscribe,
+    () => store.isNear(index),
+    () => true,
+  );
+  return <MenuPage {...pageProps} deferred={!near} />;
 }
 
 /** A single flippable page wrapping a rendered MenuPage. */
@@ -47,7 +113,16 @@ const Page = forwardRef<
 Page.displayName = "Page";
 
 const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function FlipbookViewer(
-  { pages, currencySymbol, onSelect, onMedia, onAdd, onReady, onPageChange },
+  {
+    pages,
+    currencySymbol,
+    onSelect,
+    onMedia,
+    onAdd,
+    onReady,
+    onPageChange,
+    keyboardNav = true,
+  },
   ref,
 ) {
   const bookRef = useRef<any>(null);
@@ -60,19 +135,13 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   const currentRef = useRef(0);
   // Where the book *will* sit once the turn in flight lands.
   const slideRefIdx = useRef(0);
-  const [portrait, setPortrait] = useState(false);
+  const portrait = useIsPortrait();
   const [dims, setDims] = useState({ width: 380, height: 528 });
   const [measured, setMeasured] = useState(false);
+  const nearStore = useMemo(createNearStore, []);
 
   const total = pages.length;
   const onCover = current <= 0;
-
-  useEffect(() => {
-    const check = () => setPortrait(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   // ---- Book sizing ----
   // The book IS the screen: no margin, no letterboxing. That means the page's
@@ -138,11 +207,18 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
       slideRefIdx.current = idx;
       const el = slideRef.current;
       if (el) el.style.transform = `translateX(${offsetFor(idx)}px)`;
+      // A turn starts here, so this is where the destination page has to be
+      // told to build itself. Notifying the store re-renders only the pages
+      // whose answer changed — the viewer itself does not re-render, which is
+      // the whole point of writing the transform above by hand.
+      nearStore.set(currentRef.current, idx, portrait ? 2 : 3);
     },
-    [offsetFor],
+    [offsetFor, nearStore, portrait],
   );
 
-  // Re-assert it whenever the answer changes — a resize, or a rotate.
+  // Re-assert it whenever the answer changes — a resize, or a rotate. That also
+  // re-states the reading position, whose runway differs between a phone and a
+  // spread.
   useEffect(() => slideTo(slideRefIdx.current), [slideTo]);
 
   // ---- Navigation ----
@@ -168,6 +244,12 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
     },
     [slideTo],
   );
+
+  // A category jump moves the reader without a turn, so `slideTo` alone would
+  // leave the store believing they are still where they were.
+  useEffect(() => {
+    nearStore.set(current, slideRefIdx.current, portrait ? 2 : 3);
+  }, [nearStore, current, portrait]);
 
   // Jumping to a category's page.
   //
@@ -195,13 +277,21 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   );
 
   useEffect(() => {
+    if (!keyboardNav) return;
     const onKey = (e: KeyboardEvent) => {
+      // Arrow keys belong to whatever the customer is typing in. Checked as
+      // well as `keyboardNav` because any future input on the page — a table
+      // note, a quantity box — would otherwise turn pages as it is filled in.
+      const el = e.target as HTMLElement | null;
+      if (el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? "")) {
+        return;
+      }
       if (e.key === "ArrowRight") flipNext();
       else if (e.key === "ArrowLeft") flipPrev();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [flipNext, flipPrev]);
+  }, [flipNext, flipPrev, keyboardNav]);
 
   // ---- Flip sound ----
   const playFlipSound = useCallback(() => {
@@ -272,7 +362,9 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
               transformOrigin: "top left",
             }}
           >
-            <MenuPage
+            <LazyPage
+              store={nearStore}
+              index={i}
               page={p}
               width={designWidth}
               currencySymbol={currencySymbol}
@@ -283,7 +375,17 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
           </div>
         </Page>
       )),
-    [pages, portrait, designWidth, scale, currencySymbol, onSelect, onMedia, onAdd],
+    [
+      pages,
+      portrait,
+      designWidth,
+      scale,
+      currencySymbol,
+      onSelect,
+      onMedia,
+      onAdd,
+      nearStore,
+    ],
   );
 
   return (

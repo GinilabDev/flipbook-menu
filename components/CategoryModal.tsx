@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { Category } from "@/lib/menu";
 import { categoryAccent } from "@/lib/accent";
+import { useOverlay } from "@/lib/useOverlay";
 
 export interface CategoryEntry {
   category: Category;
@@ -32,15 +33,16 @@ export default function CategoryModal({
   onClose,
 }: CategoryModalProps) {
   const activeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  // Focus opens on the category the reader is already in, so a keyboard user
+  // lands where a sighted one is looking rather than at the top of 37 entries.
+  useOverlay({
+    open,
+    onClose,
+    containerRef: panelRef,
+    initialFocusRef: activeRef,
+  });
 
   // A long menu can push the current category out of view; open on it.
   useEffect(() => {
@@ -64,7 +66,11 @@ export default function CategoryModal({
       {/* Edge to edge on a phone — `max-w-sm` left a strip of dimmed menu down
           each side that bought nothing but a narrower list. The sheet still
           caps its width once there is a desktop's worth of room. */}
-      <div className="relative flex max-h-[80vh] w-full flex-col rounded-t-2xl bg-white text-titleColor shadow-2xl sm:max-w-sm sm:rounded-2xl">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative flex max-h-[80vh] w-full flex-col rounded-t-2xl bg-white text-titleColor shadow-2xl outline-none sm:max-w-sm sm:rounded-2xl"
+      >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-neutral-200 px-5 py-3.5">
           <h3 className="font-titleFont text-lg font-semibold">Categories</h3>
           <button

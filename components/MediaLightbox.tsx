@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { mediaUrl } from "@/lib/config";
 import type { Media, MenuItem } from "@/lib/menu";
+import { useOverlay } from "@/lib/useOverlay";
 
 interface MediaLightboxProps {
   item: MenuItem;
@@ -27,11 +28,22 @@ function embedUrl(m: Media): string | null {
 export default function MediaLightbox({ item, onClose }: MediaLightboxProps) {
   const media = item.media ?? [];
   const [i, setI] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useOverlay({ open: media.length > 0, onClose, containerRef: panelRef });
+
   if (media.length === 0) return null;
   const current = media[Math.min(i, media.length - 1)];
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/85 p-4">
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Photos of ${item.name}`}
+      tabIndex={-1}
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/85 p-4 outline-none"
+    >
       <button
         onClick={onClose}
         aria-label="Close"

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
@@ -16,8 +17,15 @@ interface ItemCardProps {
   variant?: "card" | "compact";
 }
 
-/** Shared menu-item card — used on flipbook pages and in the list view. */
-export default function ItemCard({
+/**
+ * Shared menu-item card — used on flipbook pages and in the list view.
+ *
+ * Memoized: its props (the item, the currency, the handlers) never change once
+ * a menu is loaded, so the only thing that should ever re-render a card is its
+ * own quantity changing. Everything above it — a page turn, a sheet opening, a
+ * different dish being added — must leave it alone.
+ */
+function ItemCard({
   item,
   currencySymbol,
   onSelect,
@@ -48,11 +56,18 @@ export default function ItemCard({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(item)}
-      className="group flex w-full items-stretch gap-3 rounded-xl border border-neutral-200 bg-white/70 p-2.5 text-left transition hover:border-neutral-300 hover:bg-white"
-    >
+    // A card holds two separate actions — "tell me more" and "add one" — so it
+    // cannot itself be a button with buttons inside it (invalid, and a screen
+    // reader reads it as one confused control). The card is a plain box; the
+    // "details" button is stretched invisibly across it, and the controls that
+    // must stay clickable are lifted above it.
+    <div className="group relative flex w-full items-stretch gap-3 rounded-xl border border-neutral-200 bg-white/70 p-2.5 text-left transition hover:border-neutral-300 hover:bg-white">
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        aria-label={`${item.name}, ${formatPrice(currencySymbol, price)}. See details`}
+        className="absolute inset-0 z-10 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlightColor"
+      />
       {thumb && (
         <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -87,28 +102,22 @@ export default function ItemCard({
             </span>
           )}
           {hasMedia(item) && (
-            <span
-              role="button"
-              tabIndex={-1}
-              aria-label="View photo / video"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMedia(item);
-              }}
-              className="ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-neutral-100 px-2 text-xs text-titleColor hover:bg-neutral-200"
+            <button
+              type="button"
+              aria-label={`View ${item.media?.some((m) => m.type === "video") ? "video" : "photo"} of ${item.name}`}
+              onClick={() => onMedia(item)}
+              className="relative z-20 ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-neutral-100 px-2 text-xs text-titleColor hover:bg-neutral-200"
             >
               {item.media?.some((m) => m.type === "video") ? "▶" : "📷"}
-            </span>
+            </button>
           )}
         </div>
       </div>
 
-      <span
-        role="button"
-        tabIndex={-1}
-        aria-label={`Add ${item.name}`}
+      <button
+        type="button"
+        aria-label={`Add ${item.name} to your order`}
         onClick={(e) => {
-          e.stopPropagation();
           const r = e.currentTarget.getBoundingClientRect();
           flyToCart({
             x: r.left + r.width / 2,
@@ -117,7 +126,7 @@ export default function ItemCard({
           });
           onAdd(item);
         }}
-        className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center self-center rounded-full border border-highlightColor text-lg text-highlightColor transition"
+        className="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center self-center rounded-full border border-highlightColor text-lg text-highlightColor transition after:absolute after:-inset-1 after:content-['']"
       >
         <FaPlus className="text-base" />
         {qty > 0 && (
@@ -125,10 +134,12 @@ export default function ItemCard({
             {qty}
           </span>
         )}
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
+
+export default memo(ItemCard);
 
 /**
  * The same card, sized to sit two-up on a flipbook page. The paddings and
@@ -155,22 +166,26 @@ function CompactRow({
   onAdd: (item: MenuItem) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(item)}
-      className="group flex h-full w-full flex-col rounded-lg border border-neutral-200 bg-white/70 p-2 text-left transition hover:border-neutral-300 hover:bg-white"
-    >
+    // Same structure as the list card: a plain box, a stretched "details"
+    // button behind the content, and the real controls above it. The paddings,
+    // sizes and line-heights below are what lib/layout.ts costs a card at —
+    // this restructure deliberately adds no box that takes up space.
+    <div className="group relative flex h-full w-full flex-col rounded-lg border border-neutral-200 bg-white/70 p-2 text-left transition hover:border-neutral-300 hover:bg-white">
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        aria-label={`${item.name}, ${formatPrice(currencySymbol, price)}. See details`}
+        className="absolute inset-0 z-10 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-highlightColor"
+      />
       <span className="flex w-full gap-2">
         {thumbUrl && (
+          // Decorative here: the photo control is the 📷 button on the price
+          // row, and a second way in would only add a tab stop per card.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={thumbUrl}
             alt=""
             loading="lazy"
-            onClick={(e) => {
-              e.stopPropagation();
-              onMedia(item);
-            }}
             className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
           />
         )}
@@ -199,26 +214,22 @@ function CompactRow({
           </span>
         )}
         {hasMedia(item) && (
-          <span
-            role="button"
-            tabIndex={-1}
-            aria-label="View photo / video"
-            onClick={(e) => {
-              e.stopPropagation();
-              onMedia(item);
-            }}
-            className="inline-flex h-[16px] items-center"
+          <button
+            type="button"
+            aria-label={`View ${item.media?.some((m) => m.type === "video") ? "video" : "photo"} of ${item.name}`}
+            onClick={() => onMedia(item)}
+            // after:-inset-2 grows the tappable area to ~32 design px without
+            // changing the 16px the row is laid out around.
+            className="relative z-20 inline-flex h-[16px] items-center after:absolute after:-inset-2 after:content-['']"
           >
             {item.media?.some((m) => m.type === "video") ? "▶" : "📷"}
-          </span>
+          </button>
         )}
 
-        <span
-          role="button"
-          tabIndex={-1}
-          aria-label={`Add ${item.name}`}
+        <button
+          type="button"
+          aria-label={`Add ${item.name} to your order`}
           onClick={(e) => {
-            e.stopPropagation();
             const r = e.currentTarget.getBoundingClientRect();
             flyToCart({
               x: r.left + r.width / 2,
@@ -227,7 +238,11 @@ function CompactRow({
             });
             onAdd(item);
           }}
-          className="relative ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border border-highlightColor text-highlightColor opacity-80 transition"
+          // The drawn circle stays 18 design px — enlarging it would re-cost
+          // every row in the layout engine. `after:-inset-[7px]` puts a 32
+          // design px (≈46 CSS px on a phone, where the page is scaled up)
+          // target around it instead, which is what the thumb actually hits.
+          className="relative z-20 ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border border-highlightColor text-highlightColor opacity-80 transition after:absolute after:-inset-[7px] after:content-['']"
         >
           <FaPlus className="text-[8px]" />
           {qty > 0 && (
@@ -235,9 +250,9 @@ function CompactRow({
               {qty}
             </span>
           )}
-        </span>
+        </button>
       </span>
-    </button>
+    </div>
   );
 }
 

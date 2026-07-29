@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { FaFacebookF, FaGoogle, FaInstagram } from "react-icons/fa6";
 import type { LayoutPage, PageBlock } from "@/lib/layout";
 import { PAGE_H, PAGE_W } from "@/lib/layout";
@@ -21,6 +21,13 @@ interface MenuPageProps {
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
   onAdd: (item: MenuItem) => void;
+  /**
+   * True for a page far from the one being read: draw its heading, but not the
+   * hundreds of cards under it. See FlipbookViewer's `LazyPage` — a book of 40
+   * categories otherwise builds every card in every category before the
+   * customer has seen the cover.
+   */
+  deferred?: boolean;
 }
 
 interface SectionBodyProps extends Omit<MenuPageProps, "page" | "width"> {
@@ -32,13 +39,14 @@ interface SectionBodyProps extends Omit<MenuPageProps, "page" | "width"> {
  * One flipbook page (cover / section / back / blank), drawn PAGE_H tall in
  * design px — a space FlipbookViewer scales to whatever the screen gives it.
  */
-export default function MenuPage({
+function MenuPage({
   page,
   width = PAGE_W,
   currencySymbol,
   onSelect,
   onMedia,
   onAdd,
+  deferred = false,
 }: MenuPageProps) {
   if (page.kind === "cover") {
     const r = page.restaurant;
@@ -204,17 +212,21 @@ export default function MenuPage({
         />
       </div>
 
-      <SectionBody
-        blocks={blocks}
-        itemsPerRow={itemsPerRow}
-        currencySymbol={currencySymbol}
-        onSelect={onSelect}
-        onMedia={onMedia}
-        onAdd={onAdd}
-      />
+      {!deferred && (
+        <SectionBody
+          blocks={blocks}
+          itemsPerRow={itemsPerRow}
+          currencySymbol={currencySymbol}
+          onSelect={onSelect}
+          onMedia={onMedia}
+          onAdd={onAdd}
+        />
+      )}
     </Sheet>
   );
 }
+
+export default memo(MenuPage);
 
 /**
  * The page's block stack — the whole category, however long. The page itself is
