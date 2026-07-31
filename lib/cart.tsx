@@ -6,6 +6,8 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type { MenuItem } from "@/lib/menu";
@@ -17,6 +19,14 @@ export interface CartLine {
 }
 
 interface CartState {
+  /**
+   * Storage key the `lines` were loaded from, or null before the first load.
+   * Carried in state rather than a ref so the persist effect can tell "this
+   * cart belongs to the restaurant on screen" from "this is the previous
+   * restaurant's cart, about to be replaced" — writing the latter under the new
+   * key is exactly the cross-restaurant leak this scoping exists to stop.
+   */
+  key: string | null;
   lines: Record<string, CartLine>;
 }
 
@@ -25,9 +35,16 @@ type Action =
   | { type: "setQty"; itemId: string; qty: number }
   | { type: "remove"; itemId: string }
   | { type: "clear" }
-  | { type: "hydrate"; state: CartState };
+  | { type: "hydrate"; key: string; lines: Record<string, CartLine> };
 
-const STORAGE_KEY = "flipbook.cart.v1";
+/**
+ * One cart per restaurant. The v1 key was global, so scanning a second
+ * restaurant's QR carried the first one's items over — and an order placed from
+ * that cart sends the kitchen dishes it has never heard of.
+ */
+const storageKeyFor = (restaurantId: string) => `flipbook.cart.v2.${restaurantId}`;
+/** Pre-scoping key. Dropped, not migrated — see loadLines(). */
+const LEGACY_STORAGE_KEY = "flipbook.cart.v1";
 
 function reducer(state: CartState, action: Action): CartState {
   switch (action.type) {
@@ -35,6 +52,7 @@ function reducer(state: CartState, action: Action): CartState {
       const existing = state.lines[action.item.id];
       const qty = (existing?.qty ?? 0) + (action.qty ?? 1);
       return {
+        ...state,
         lines: { ...state.lines, [action.item.id]: { item: action.item, qty } },
       };
     }
@@ -44,9 +62,10 @@ function reducer(state: CartState, action: Action): CartState {
       if (action.qty <= 0) {
         const next = { ...state.lines };
         delete next[action.itemId];
-        return { lines: next };
+        return { ...state, lines: next };
       }
       return {
+        ...state,
         lines: {
           ...state.lines,
           [action.itemId]: { ...existing, qty: action.qty },
@@ -56,14 +75,35 @@ function reducer(state: CartState, action: Action): CartState {
     case "remove": {
       const next = { ...state.lines };
       delete next[action.itemId];
-      return { lines: next };
+      return { ...state, lines: next };
     }
     case "clear":
-      return { lines: {} };
+      return { ...state, lines: {} };
     case "hydrate":
-      return action.state;
+      return { key: action.key, lines: action.lines };
     default:
       return state;
+  }
+}
+
+/**
+ * Read one restaurant's stored cart. Anything unreadable is treated as empty —
+ * a half-parsed cart is worse than none.
+ *
+ * The legacy global cart is deleted rather than migrated: it may well have been
+ * filled at a different restaurant, and there is nothing in it saying which. A
+ * customer losing an unsent cart is a small cost; inheriting someone else's
+ * dishes is the bug.
+ */
+function loadLines(key: string): Record<string, CartLine> {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as CartState | null;
+    return parsed?.lines && typeof parsed.lines === "object" ? parsed.lines : {};
+  } catch {
+    return {};
   }
 }
 
@@ -96,27 +136,70 @@ const CartContext = createContext<CartContextValue | null>(null);
  */
 const CartActionsContext = createContext<CartActions | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { lines: {} });
+/**
+ * Per-item quantities, published as a subscribable store rather than as context
+ * state.
+ *
+ * A menu page holds hundreds of cards, and each one shows how many of ITS item
+ * are in the order. Through context, adding one dish re-renders every card on
+ * every page — measured at 800+ DOM mutations for a single tap. Here a card
+ * subscribes to its own id, so adding a dish repaints that dish's badge.
+ */
+interface QtyStore {
+  subscribe: (listener: () => void) => () => void;
+  getQty: (itemId: string) => number;
+}
 
-  // Load persisted cart once on mount.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) dispatch({ type: "hydrate", state: JSON.parse(raw) });
-    } catch {
-      /* ignore corrupt storage */
-    }
-  }, []);
+const QtyStoreContext = createContext<QtyStore | null>(null);
 
-  // Persist on change.
+export function CartProvider({
+  restaurantId,
+  children,
+}: {
+  /** Scopes the cart. The API's restaurant id, not the URL slug — two slugs
+   *  pointing at the same restaurant should share one cart. */
+  restaurantId: string;
+  children: ReactNode;
+}) {
+  const [state, dispatch] = useReducer(reducer, { key: null, lines: {} });
+  const storageKey = storageKeyFor(restaurantId);
+
+  // Load this restaurant's cart.
   useEffect(() => {
+    dispatch({ type: "hydrate", key: storageKey, lines: loadLines(storageKey) });
+  }, [storageKey]);
+
+  // Persist on change — but only once `state` is this restaurant's own cart.
+  useEffect(() => {
+    if (state.key !== storageKey) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(storageKey, JSON.stringify({ lines: state.lines }));
     } catch {
       /* storage full / unavailable — ignore */
     }
-  }, [state]);
+  }, [state, storageKey]);
+
+  // ---- per-item quantity store ----
+  // The lines are mirrored into a ref so `getQty` can be a stable function that
+  // still reads current data, and subscribers are notified after each commit.
+  const linesRef = useRef(state.lines);
+  const qtyListeners = useRef(new Set<() => void>());
+  const qtyStore = useMemo<QtyStore>(
+    () => ({
+      subscribe: (listener) => {
+        qtyListeners.current.add(listener);
+        return () => {
+          qtyListeners.current.delete(listener);
+        };
+      },
+      getQty: (itemId) => linesRef.current[itemId]?.qty ?? 0,
+    }),
+    [],
+  );
+  useEffect(() => {
+    linesRef.current = state.lines;
+    qtyListeners.current.forEach((l) => l());
+  }, [state.lines]);
 
   // `dispatch` never changes, so neither do these.
   const actions = useMemo<CartActions>(
@@ -142,7 +225,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartActionsContext.Provider value={actions}>
-      <CartContext.Provider value={value}>{children}</CartContext.Provider>
+      <QtyStoreContext.Provider value={qtyStore}>
+        <CartContext.Provider value={value}>{children}</CartContext.Provider>
+      </QtyStoreContext.Provider>
     </CartActionsContext.Provider>
   );
 }
@@ -164,7 +249,16 @@ export function useCartActions(): CartActions {
  * How many of one item are in the cart. Read here, inside the card, rather than
  * threaded down from the page — a card can then update its badge without the
  * page above it re-rendering (and rebuilding the book's DOM).
+ *
+ * Subscribes to just this id, so a card only re-renders when ITS quantity
+ * changes, not when anything at all happens to the order.
  */
 export function useItemQty(itemId: string): number {
-  return useCart().qtyOf(itemId);
+  const store = useContext(QtyStoreContext);
+  if (!store) throw new Error("useItemQty must be used within <CartProvider>");
+  return useSyncExternalStore(
+    store.subscribe,
+    () => store.getQty(itemId),
+    () => 0,
+  );
 }

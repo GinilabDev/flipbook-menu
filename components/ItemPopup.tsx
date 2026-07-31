@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
 import { flyToCart } from "@/lib/flyToCart";
+import { useOverlay } from "@/lib/useOverlay";
 
 interface ItemPopupProps {
   item: MenuItem;
@@ -25,11 +26,29 @@ export default function ItemPopup({
   const [qty, setQty] = useState(1);
   const price = effectivePrice(item);
   const thumb = item.media?.find((m) => m.type === "image");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  // Focus the panel itself, not its first button: a screen reader then reads
+  // the dish and its price, rather than announcing "Close".
+  useOverlay({
+    open: true,
+    onClose,
+    containerRef: panelRef,
+    initialFocusRef: panelRef,
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-t-2xl bg-white p-5 text-titleColor shadow-2xl sm:rounded-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative w-full max-w-sm rounded-t-2xl bg-white p-5 text-titleColor shadow-2xl outline-none sm:rounded-2xl"
+      >
         <button
           onClick={onClose}
           aria-label="Close"
@@ -39,16 +58,20 @@ export default function ItemPopup({
         </button>
 
         {thumb && (
-          <div
-            className="mb-3 -mx-5 -mt-5 h-40 cursor-pointer overflow-hidden rounded-t-2xl bg-neutral-100"
+          <button
+            type="button"
+            aria-label={`View photos of ${item.name}`}
+            className="mb-3 -mx-5 -mt-5 block h-40 w-[calc(100%+2.5rem)] cursor-pointer overflow-hidden rounded-t-2xl bg-neutral-100"
             onClick={() => hasMedia(item) && onMedia(item)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mediaUrl(thumb.url)} alt={item.name} className="h-full w-full object-cover" />
-          </div>
+          </button>
         )}
 
-        <h3 className="pr-8 font-titleFont text-lg font-semibold">{item.name}</h3>
+        <h3 id={titleId} className="pr-8 font-titleFont text-lg font-semibold">
+          {item.name}
+        </h3>
         {(item.longDesc || item.shortDesc) && (
           <p className="mt-1 font-descriptionFont text-sm text-descriptionColor">
             {item.longDesc || item.shortDesc}
@@ -78,15 +101,21 @@ export default function ItemPopup({
           <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100">
             <button
               onClick={() => setQty((q) => Math.max(1, q - 1))}
+              aria-label="Decrease quantity"
               className="flex h-10 w-10 items-center justify-center rounded-l-lg text-xl text-titleColor hover:bg-neutral-200"
             >
               −
             </button>
-            <span className="w-8 text-center font-titleFont tabular-nums text-titleColor">
+            <span
+              aria-live="polite"
+              aria-label={`Quantity ${qty}`}
+              className="w-8 text-center font-titleFont tabular-nums text-titleColor"
+            >
               {qty}
             </span>
             <button
               onClick={() => setQty((q) => q + 1)}
+              aria-label="Increase quantity"
               className="flex h-10 w-10 items-center justify-center rounded-r-lg text-xl text-titleColor hover:bg-neutral-200"
             >
               +

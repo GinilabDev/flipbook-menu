@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { FaFacebookF, FaGoogle, FaInstagram } from "react-icons/fa6";
 import type { LayoutPage, PageBlock } from "@/lib/layout";
 import { PAGE_H, PAGE_W } from "@/lib/layout";
@@ -13,14 +13,24 @@ import ItemCard, { CompactBadges } from "@/components/ItemCard";
 interface MenuPageProps {
   page: LayoutPage;
   /**
-   * The page's width in design px. Variable: the book fills the screen, so the
-   * page's shape follows the viewport while its height stays PAGE_H.
+   * The page's size in design px. Both are variable: the book fills the screen,
+   * so the page's shape follows the viewport while its type keeps a fixed size
+   * (see lib/layout.ts#pageScaleFor). A short screen simply gets a shorter page
+   * that scrolls sooner.
    */
   width?: number;
+  height?: number;
   currencySymbol: string;
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
   onAdd: (item: MenuItem) => void;
+  /**
+   * True for a page far from the one being read: draw its heading, but not the
+   * hundreds of cards under it. See FlipbookViewer's `LazyPage` — a book of 40
+   * categories otherwise builds every card in every category before the
+   * customer has seen the cover.
+   */
+  deferred?: boolean;
 }
 
 interface SectionBodyProps extends Omit<MenuPageProps, "page" | "width"> {
@@ -32,13 +42,15 @@ interface SectionBodyProps extends Omit<MenuPageProps, "page" | "width"> {
  * One flipbook page (cover / section / back / blank), drawn PAGE_H tall in
  * design px — a space FlipbookViewer scales to whatever the screen gives it.
  */
-export default function MenuPage({
+function MenuPage({
   page,
   width = PAGE_W,
+  height = PAGE_H,
   currencySymbol,
   onSelect,
   onMedia,
   onAdd,
+  deferred = false,
 }: MenuPageProps) {
   if (page.kind === "cover") {
     const r = page.restaurant;
@@ -47,6 +59,7 @@ export default function MenuPage({
     return (
       <Sheet
         width={width}
+        height={height}
         className="items-center justify-center gap-4 p-8 text-center"
         style={{ background: bg, color: fg }}
       >
@@ -113,6 +126,7 @@ export default function MenuPage({
     return (
       <Sheet
         width={width}
+        height={height}
         className="items-center justify-center gap-3 p-8 text-center"
         style={{ background: bg, color: fg }}
       >
@@ -170,7 +184,7 @@ export default function MenuPage({
   }
 
   if (page.kind === "blank") {
-    return <Sheet width={width} className="bg-white" />;
+    return <Sheet width={width} height={height} className="bg-white" />;
   }
 
   const { category, blocks, itemsPerRow, itemCount } = page;
@@ -180,7 +194,7 @@ export default function MenuPage({
   const accent = categoryAccent(category);
 
   return (
-    <Sheet width={width} className="bg-white">
+    <Sheet width={width} height={height} className="bg-white">
       {/* Section header. Sized to its own content rather than pinned to a fixed
           height — a category with no description used to pay for the line it
           didn't have as dead space above the title. */}
@@ -204,17 +218,21 @@ export default function MenuPage({
         />
       </div>
 
-      <SectionBody
-        blocks={blocks}
-        itemsPerRow={itemsPerRow}
-        currencySymbol={currencySymbol}
-        onSelect={onSelect}
-        onMedia={onMedia}
-        onAdd={onAdd}
-      />
+      {!deferred && (
+        <SectionBody
+          blocks={blocks}
+          itemsPerRow={itemsPerRow}
+          currencySymbol={currencySymbol}
+          onSelect={onSelect}
+          onMedia={onMedia}
+          onAdd={onAdd}
+        />
+      )}
     </Sheet>
   );
 }
+
+export default memo(MenuPage);
 
 /**
  * The page's block stack — the whole category, however long. The page itself is
@@ -350,22 +368,24 @@ function readableOn(hex: string): string {
   return luminance > 0.45 ? "#262626" : "#ffffff";
 }
 
-/** The page canvas: PAGE_H tall in design px, as wide as the screen makes it. */
+/** The page canvas, sized in design px — the space the viewer scales to fit. */
 function Sheet({
   children,
   width,
+  height,
   className = "",
   style,
 }: {
   children?: React.ReactNode;
   width: number;
+  height: number;
   className?: string;
   style?: React.CSSProperties;
 }) {
   return (
     <div
       className={`flex flex-col overflow-hidden ${className}`}
-      style={{ width, height: PAGE_H, ...style }}
+      style={{ width, height, ...style }}
     >
       {children}
     </div>

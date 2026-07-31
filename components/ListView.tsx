@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { Menu, MenuItem } from "@/lib/menu";
 import { formatPrice, fromPrice, groupCategoryItems, orderedCategories } from "@/lib/menu";
 import ItemCard, { CompactBadges } from "@/components/ItemCard";
@@ -11,8 +12,14 @@ interface ListViewProps {
   onAdd: (item: MenuItem) => void;
 }
 
-/** Fast scrollable alternative to the flipbook (mobile-friendly). */
-export default function ListView({
+/**
+ * Fast scrollable alternative to the flipbook (mobile-friendly).
+ *
+ * Memoized because scrolling it updates the page above (which category is the
+ * reader in), which would otherwise re-sort and re-group every category on
+ * every scroll tick.
+ */
+function ListView({
   menu,
   onSelect,
   onMedia,
@@ -83,3 +90,5 @@ export default function ListView({
     </div>
   );
 }
+
+export default memo(ListView);

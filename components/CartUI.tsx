@@ -5,23 +5,69 @@ import { useCart } from "@/lib/cart";
 import type { Restaurant, TableInfo } from "@/lib/menu";
 import { effectivePrice } from "@/lib/menu";
 import { FLY_EVENT, type FlyOrigin } from "@/lib/flyToCart";
+import { useOverlay } from "@/lib/useOverlay";
 
 interface CartUIProps {
   restaurant: Restaurant;
   table?: TableInfo;
+  /** Lets the page know a sheet is up — the book must stop taking arrow keys. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 const money = (sym: string, n: number) => `${sym}${n.toFixed(2)}`;
 
+/**
+ * Identifies one order attempt so a retry can't become a second dinner.
+ * `randomUUID` needs a secure context, which a kitchen tablet on plain http
+ * over the venue's LAN is not — hence the fallback.
+ */
+function newOrderKey(): string {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `fb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 /** Floating cart button + slide-in drawer. Responsive: full-width sheet on
  *  mobile, right-hand drawer on desktop. */
-export default function CartUI({ restaurant, table }: CartUIProps) {
+export default function CartUI({ restaurant, table, onOpenChange }: CartUIProps) {
   const currencySymbol = restaurant.currencySymbol;
   const { lines, count, subtotal, setQty, remove, clear } = useCart();
   const [open, setOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  /** Spoken by the live region below — "Chicken Korma added". */
+  const [announcement, setAnnouncement] = useState("");
   const cartBtnRef = useRef<HTMLButtonElement>(null);
+  const orderKeyRef = useRef<string | null>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useOverlay({
+    open,
+    onClose: () => setOpen(false),
+    containerRef: drawerRef,
+    // The drawer, so the order is read out before the close button.
+    initialFocusRef: drawerRef,
+  });
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+
+  // An order needs a table to go to. Without one the kitchen gets food with
+  // nowhere to take it, so browsing and adding stay open but sending does not.
+  const canOrder = !!table?.id;
+
+  // A retry must reuse its key (so a timed-out order isn't cooked twice), but
+  // an edited cart is a different order and gets a fresh one.
+  const linesSignature = lines.map((l) => `${l.item.id}:${l.qty}`).join(",");
+  useEffect(() => {
+    orderKeyRef.current = null;
+    setError(null);
+  }, [linesSignature]);
 
   // "Fly to cart": animate a labelled chip from the add point into the cart
   // button along an arc, then bump the button. Purely visual; the chip is a
@@ -36,6 +82,8 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
     };
 
     const fly = (detail: FlyOrigin, retry: boolean) => {
+      // The animation is invisible to a screen reader, so say what happened.
+      if (detail.label) setAnnouncement(`${detail.label} added to your order`);
       const btn = cartBtnRef.current;
       // The button only exists once the cart is non-empty, so on the very first
       // add it is still one render away — wait a frame before giving up.
@@ -91,7 +139,10 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
   }, []);
 
   const placeOrder = async () => {
+    if (!canOrder || placing) return;
     setPlacing(true);
+    setError(null);
+    const idempotencyKey = (orderKeyRef.current ??= newOrderKey());
     try {
       const res = await fetch("/api/flipbook/order", {
         method: "POST",
@@ -99,14 +150,23 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
         body: JSON.stringify({
           restaurant: restaurant.id,
           table: table?.id,
+          idempotencyKey,
           items: lines.map((l) => ({ itemId: l.item.id, qty: l.qty })),
         }),
       });
-      if (!res.ok) throw new Error("order failed");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error || "");
+      orderKeyRef.current = null;
       clear();
       setPlaced(true);
-    } catch {
-      alert("Could not place the order. Please try again.");
+    } catch (err) {
+      // Reported in the drawer, next to the button that failed — a native
+      // alert() drops the customer out of the restaurant's own UI, and on iOS
+      // it can be dismissed before it is read.
+      setError(
+        (err instanceof Error && err.message) ||
+          "Could not send your order. Please try again, or call a member of staff.",
+      );
     } finally {
       setPlacing(false);
     }
@@ -114,6 +174,14 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
 
   return (
     <>
+      {/* Adds happen on a page that gives no spoken feedback of its own. */}
+      <p aria-live="polite" className="sr-only">
+        {announcement}
+        {announcement && count > 0
+          ? `. ${count} item${count === 1 ? "" : "s"} in your order, ${money(currencySymbol, subtotal)}`
+          : ""}
+      </p>
+
       {/* Floating cart button — centred at the foot of the book, and only once
           there is something in the cart: an empty cart has nothing to open, and
           the book now runs edge to edge, so every pixel of chrome covers menu.
@@ -163,7 +231,14 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative flex h-full w-full max-w-md flex-col bg-white text-titleColor shadow-2xl">
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Your order"
+            tabIndex={-1}
+            className="relative flex h-full w-full max-w-md flex-col bg-white text-titleColor shadow-2xl outline-none"
+          >
             <div className="flex items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4">
               <div className="min-w-0">
                 <h2 className="font-titleFont text-lg font-semibold leading-tight">
@@ -268,12 +343,29 @@ export default function CartUI({ restaurant, table }: CartUIProps) {
                       {money(currencySymbol, subtotal)}
                     </span>
                   </div>
+
+                  {error && (
+                    <p
+                      role="alert"
+                      className="mb-3 rounded-lg bg-red-50 px-3 py-2.5 font-descriptionFont text-sm text-red-700"
+                    >
+                      {error}
+                    </p>
+                  )}
+
+                  {!canOrder && (
+                    <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2.5 font-descriptionFont text-sm text-amber-800">
+                      Scan the QR code on your table to send this order — we
+                      need to know where to bring it.
+                    </p>
+                  )}
+
                   <button
                     onClick={placeOrder}
-                    disabled={placing}
+                    disabled={placing || !canOrder}
                     className="w-full rounded-xl bg-highlightColor py-3 font-titleFont font-medium text-white transition hover:opacity-90 disabled:bg-disableColor disabled:text-disableTextColor disabled:opacity-60"
                   >
-                    Checkout
+                    {placing ? "Sending…" : error ? "Try again" : "Checkout"}
                   </button>
                 </div>
               </>

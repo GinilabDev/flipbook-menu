@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import type { Menu } from "@/lib/menu";
+import { CartProvider } from "@/lib/cart";
 import MenuExperience from "@/components/MenuExperience";
 
 type Status = "loading" | "ready" | "error";
@@ -54,7 +55,14 @@ export default function RestaurantMenuClient() {
     load();
   }, [load]);
 
-  if (status === "ready" && menu) return <MenuExperience menu={menu} />;
+  // The cart is scoped to the restaurant, so it can only be mounted once we
+  // know which restaurant this is.
+  if (status === "ready" && menu)
+    return (
+      <CartProvider restaurantId={menu.restaurant.id}>
+        <MenuExperience menu={menu} />
+      </CartProvider>
+    );
 
   return (
     <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-neutral-200 px-4 text-center font-titleFont">
