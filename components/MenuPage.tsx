@@ -13,10 +13,13 @@ import ItemCard, { CompactBadges } from "@/components/ItemCard";
 interface MenuPageProps {
   page: LayoutPage;
   /**
-   * The page's width in design px. Variable: the book fills the screen, so the
-   * page's shape follows the viewport while its height stays PAGE_H.
+   * The page's size in design px. Both are variable: the book fills the screen,
+   * so the page's shape follows the viewport while its type keeps a fixed size
+   * (see lib/layout.ts#pageScaleFor). A short screen simply gets a shorter page
+   * that scrolls sooner.
    */
   width?: number;
+  height?: number;
   currencySymbol: string;
   onSelect: (item: MenuItem) => void;
   onMedia: (item: MenuItem) => void;
@@ -42,6 +45,7 @@ interface SectionBodyProps extends Omit<MenuPageProps, "page" | "width"> {
 function MenuPage({
   page,
   width = PAGE_W,
+  height = PAGE_H,
   currencySymbol,
   onSelect,
   onMedia,
@@ -55,6 +59,7 @@ function MenuPage({
     return (
       <Sheet
         width={width}
+        height={height}
         className="items-center justify-center gap-4 p-8 text-center"
         style={{ background: bg, color: fg }}
       >
@@ -121,6 +126,7 @@ function MenuPage({
     return (
       <Sheet
         width={width}
+        height={height}
         className="items-center justify-center gap-3 p-8 text-center"
         style={{ background: bg, color: fg }}
       >
@@ -178,7 +184,7 @@ function MenuPage({
   }
 
   if (page.kind === "blank") {
-    return <Sheet width={width} className="bg-white" />;
+    return <Sheet width={width} height={height} className="bg-white" />;
   }
 
   const { category, blocks, itemsPerRow, itemCount } = page;
@@ -188,7 +194,7 @@ function MenuPage({
   const accent = categoryAccent(category);
 
   return (
-    <Sheet width={width} className="bg-white">
+    <Sheet width={width} height={height} className="bg-white">
       {/* Section header. Sized to its own content rather than pinned to a fixed
           height — a category with no description used to pay for the line it
           didn't have as dead space above the title. */}
@@ -362,22 +368,24 @@ function readableOn(hex: string): string {
   return luminance > 0.45 ? "#262626" : "#ffffff";
 }
 
-/** The page canvas: PAGE_H tall in design px, as wide as the screen makes it. */
+/** The page canvas, sized in design px — the space the viewer scales to fit. */
 function Sheet({
   children,
   width,
+  height,
   className = "",
   style,
 }: {
   children?: React.ReactNode;
   width: number;
+  height: number;
   className?: string;
   style?: React.CSSProperties;
 }) {
   return (
     <div
       className={`flex flex-col overflow-hidden ${className}`}
-      style={{ width, height: PAGE_H, ...style }}
+      style={{ width, height, ...style }}
     >
       {children}
     </div>

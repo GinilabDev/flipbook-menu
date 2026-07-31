@@ -218,9 +218,9 @@ function CompactRow({
             type="button"
             aria-label={`View ${item.media?.some((m) => m.type === "video") ? "video" : "photo"} of ${item.name}`}
             onClick={() => onMedia(item)}
-            // after:-inset-2 grows the tappable area to ~32 design px without
-            // changing the 16px the row is laid out around.
-            className="relative z-20 inline-flex h-[16px] items-center after:absolute after:-inset-2 after:content-['']"
+            // Grown to a 36 design px target without changing the 16px the row
+            // is laid out around — same reasoning as the add button below.
+            className="relative z-20 inline-flex h-[16px] items-center after:absolute after:-inset-[10px] after:content-['']"
           >
             {item.media?.some((m) => m.type === "video") ? "▶" : "📷"}
           </button>
@@ -239,10 +239,11 @@ function CompactRow({
             onAdd(item);
           }}
           // The drawn circle stays 18 design px — enlarging it would re-cost
-          // every row in the layout engine. `after:-inset-[7px]` puts a 32
-          // design px (≈46 CSS px on a phone, where the page is scaled up)
-          // target around it instead, which is what the thumb actually hits.
-          className="relative z-20 ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border border-highlightColor text-highlightColor opacity-80 transition after:absolute after:-inset-[7px] after:content-['']"
+          // every row in the layout engine. The `after` box is the target the
+          // thumb actually hits: 36 design px, which is 45 CSS px at the
+          // smallest scale a page is ever drawn at (MIN_PAGE_SCALE = 1.25) and
+          // more on any larger screen.
+          className="relative z-20 ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border border-highlightColor text-highlightColor opacity-80 transition after:absolute after:-inset-[9px] after:content-['']"
         >
           <FaPlus className="text-[8px]" />
           {qty > 0 && (

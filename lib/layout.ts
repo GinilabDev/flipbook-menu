@@ -27,9 +27,39 @@ import type {
 } from "@/lib/menu";
 import { fromPrice, groupCategoryItems, orderedCategories } from "@/lib/menu";
 
-/** Design-space page size. Ratio must match FlipbookViewer's `aspect`. */
+/**
+ * The reference page: the box these designs were drawn in. A page is authored
+ * at this size and scaled to the screen, which is what keeps a card the same
+ * shape on a phone and a desktop.
+ *
+ * PAGE_H is only a *reference* height. The height a page is actually given is
+ * derived from the scale (see below), so that the book still fills the screen
+ * exactly — no letterboxing — at any scale.
+ */
 export const PAGE_W = 400;
 export const PAGE_H = 556;
+
+/**
+ * How far the page may be scaled, and therefore how large its type can end up.
+ *
+ * Scale used to be whatever the screen's height divided by PAGE_H happened to
+ * be, which meant the type had no size of its own: measured across real
+ * devices, the same price rendered at 6.8px on a phone held landscape, 10.5px
+ * on a 320px phone, and 21.2px on a 1080p desktop. A menu is read in a dim
+ * room, often by someone who left their glasses at home.
+ *
+ * The floor is set so the smallest thing on a card — 9px description text in
+ * design space — stays above 11px on screen, and prices stay above 14px. The
+ * ceiling stops a large screen from turning dish names into headlines.
+ */
+export const MIN_PAGE_SCALE = 1.25;
+export const MAX_PAGE_SCALE = 1.6;
+
+/** Clamp a screen-derived scale into the readable band. */
+export function pageScaleFor(stageHeight: number): number {
+  const natural = stageHeight / PAGE_H;
+  return Math.min(MAX_PAGE_SCALE, Math.max(MIN_PAGE_SCALE, natural));
+}
 
 export type PageBlock =
   /**

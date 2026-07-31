@@ -12,7 +12,7 @@ import {
 } from "react";
 import dynamic from "next/dynamic";
 import type { LayoutPage } from "@/lib/layout";
-import { PAGE_H } from "@/lib/layout";
+import { pageScaleFor } from "@/lib/layout";
 import type { MenuItem } from "@/lib/menu";
 import { useIsPortrait } from "@/lib/useViewport";
 import MenuPage from "@/components/MenuPage";
@@ -322,12 +322,15 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   const onFlip = useCallback((e: { data: number }) => onFlipRef.current(e), []);
 
   // A page fills the screen, so its shape is the viewport's, not a fixed
-  // rectangle. Type is scaled off the page HEIGHT — scaling off the width would
-  // blow the text up to poster size on a wide desktop — which leaves the design
-  // WIDTH as the variable: a taller-than-wide phone page stays narrow, a wide
-  // desktop page simply has more room per column.
-  const scale = dims.height / PAGE_H;
+  // rectangle — and its type has a size of its own rather than whatever the
+  // screen's height happens to imply (see pageScaleFor).
+  //
+  // With the scale pinned, BOTH design dimensions become the variables: a short
+  // screen gets a shorter page that scrolls sooner, a tall one gets a longer
+  // page. The page still covers the stage exactly, so nothing is letterboxed.
+  const scale = pageScaleFor(dims.height);
   const designWidth = Math.round(dims.width / scale);
+  const designHeight = Math.round(dims.height / scale);
 
   // The book's pages, built ONCE per (pages, size, handlers) — never per flip.
   //
@@ -352,12 +355,12 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
         // "right" page; alternating would flip the shadow to the outer edge on
         // every other turn.
         <Page key={p.key} side={portrait || i % 2 === 0 ? "right" : "left"}>
-          {/* Pages are authored PAGE_H tall in design px and scaled to the
-              book, so type keeps its proportions at any size. */}
+          {/* Pages are authored in design px and scaled to the book, so type
+              keeps its size and proportions at any screen size. */}
           <div
             style={{
               width: designWidth,
-              height: PAGE_H,
+              height: designHeight,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
@@ -367,6 +370,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
               index={i}
               page={p}
               width={designWidth}
+              height={designHeight}
               currencySymbol={currencySymbol}
               onSelect={onSelect}
               onMedia={onMedia}
