@@ -47,3 +47,30 @@ export function accentFor(id: string): string {
 export function categoryAccent(cat: { id: string; color?: string }): string {
   return cat.color || accentFor(cat.id);
 }
+
+/**
+ * Black or white, whichever stays readable on `hex`. Brand colours come from
+ * whatever theme the restaurant picked — some are near-black, some near-white —
+ * so the text colour can't be hard-coded. Standard sRGB relative luminance.
+ *
+ * Lives here rather than beside the cover that first needed it: the cover's
+ * placeholder has to reach the same answer, and a skeleton has no business
+ * importing the whole page component to get it.
+ */
+export function readableOn(hex: string): string {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return "#ffffff";
+  let h = m[1];
+  if (h.length === 3)
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  const channel = (i: number) => {
+    const v = parseInt(h.slice(i * 2, i * 2 + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
+  return luminance > 0.45 ? "#262626" : "#ffffff";
+}

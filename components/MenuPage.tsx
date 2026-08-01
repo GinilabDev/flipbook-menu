@@ -6,7 +6,7 @@ import type { LayoutPage, PageBlock } from "@/lib/layout";
 import { PAGE_H, PAGE_W } from "@/lib/layout";
 import type { MenuItem, Restaurant } from "@/lib/menu";
 import { formatPrice } from "@/lib/menu";
-import { categoryAccent } from "@/lib/accent";
+import { categoryAccent, readableOn } from "@/lib/accent";
 import { mediaUrl } from "@/lib/config";
 import ItemCard, { CompactBadges } from "@/components/ItemCard";
 
@@ -343,29 +343,6 @@ function Logo({
       />
     </span>
   );
-}
-
-/**
- * Black or white, whichever stays readable on `hex`. Brand colours come from
- * whatever theme the restaurant picked — some are near-black, some near-white —
- * so the text colour can't be hard-coded. Standard sRGB relative luminance.
- */
-function readableOn(hex: string): string {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return "#ffffff";
-  let h = m[1];
-  if (h.length === 3)
-    h = h
-      .split("")
-      .map((c) => c + c)
-      .join("");
-  const channel = (i: number) => {
-    const v = parseInt(h.slice(i * 2, i * 2 + 2), 16) / 255;
-    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-  };
-  const luminance =
-    0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
-  return luminance > 0.45 ? "#262626" : "#ffffff";
 }
 
 /** The page canvas, sized in design px — the space the viewer scales to fit. */

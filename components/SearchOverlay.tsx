@@ -148,15 +148,20 @@ export default function SearchOverlay({
             </p>
           </div>
         ) : (
-          <>
+          // The count belongs to the results, so it shares their column —
+          // left-aligned to the page it sat far away from the thing it was
+          // counting. Both it and the per-result category line are set in the
+          // title face: the description face is a Thin weight, which at this
+          // size reads as grey noise.
+          <div className="mx-auto w-full max-w-2xl">
             <p
               aria-live="polite"
-              className="mb-2 font-descriptionFont text-xs text-disableTextColor"
+              className="mb-2 font-titleFont text-[13px] font-medium text-titleColor"
             >
               {results.length} {results.length === 1 ? "dish" : "dishes"}
               {results.length === RESULT_LIMIT ? " — closest matches" : ""}
             </p>
-            <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
+            <div className="flex w-full flex-col gap-3">
               {results.map(({ item, category, subcategory }) => (
                 <div key={item.id}>
                   <button
@@ -164,14 +169,14 @@ export default function SearchOverlay({
                       onGoToCategory(category.id);
                       onClose();
                     }}
-                    className="mb-1 flex max-w-full items-center gap-1 truncate font-descriptionFont text-[11px] text-disableTextColor hover:text-titleColor"
+                    className="mb-1 flex max-w-full items-center gap-1 truncate font-titleFont text-[12.5px] font-medium text-disableTextColor hover:text-titleColor"
                     title={`Go to ${category.name}`}
                   >
                     <span className="truncate">
                       {category.name}
                       {subcategory ? ` › ${subcategory.name}` : ""}
                     </span>
-                    <IconArrow className="h-3 w-3 flex-shrink-0" />
+                    <IconArrow className="h-3.5 w-3.5 flex-shrink-0" />
                   </button>
                   <ItemCard
                     item={item}
@@ -183,7 +188,7 @@ export default function SearchOverlay({
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

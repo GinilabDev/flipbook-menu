@@ -3,10 +3,11 @@
 import { memo } from "react";
 import { mediaUrl } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu";
-import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
+import { effectivePrice, formatPrice, hasDiscount } from "@/lib/menu";
 import { flyToCart } from "@/lib/flyToCart";
 import { useItemQty } from "@/lib/cart";
 import { FaPlus } from "react-icons/fa6";
+
 interface ItemCardProps {
   item: MenuItem;
   currencySymbol: string;
@@ -17,8 +18,37 @@ interface ItemCardProps {
   variant?: "card" | "compact";
 }
 
+/** What the card shows as its picture, and what a tap on it opens. */
+interface Preview {
+  /** null = a video we have no still for; drawn as a play tile instead */
+  src: string | null;
+  isVideo: boolean;
+}
+
+/**
+ * The one picture a card gets. An image wins over a video, because a still
+ * frame sells a dish better than a black tile; a video-only item falls back to
+ * its own thumbnail, and to a play tile when it has none. Either way the
+ * picture is the only way into the lightbox — there is no separate media
+ * button — so a video item must still show *something* tappable.
+ */
+function previewOf(item: MenuItem): Preview | null {
+  const media = item.media ?? [];
+  const first = media.find((m) => m.type === "image") ?? media[0];
+  if (!first) return null;
+  if (first.type === "image")
+    return { src: mediaUrl(first.thumbnail || first.url), isVideo: false };
+  return {
+    src: first.thumbnail ? mediaUrl(first.thumbnail) : null,
+    isVideo: true,
+  };
+}
+
 /**
  * Shared menu-item card — used on flipbook pages and in the list view.
+ *
+ * Laid out like the tomafood web menu's card: the words on the left, the photo
+ * on the right, and the add control floating in the top-right corner over it.
  *
  * Memoized: its props (the item, the currency, the handlers) never change once
  * a menu is loaded, so the only thing that should ever re-render a card is its
@@ -37,83 +67,127 @@ function ItemCard({
   // add, and a prop would force the whole page (and the book's DOM) to rebuild
   // for it. See lib/cart.tsx#useItemQty.
   const qty = useItemQty(item.id);
-  const thumb = item.media?.find((m) => m.type === "image");
+  const preview = previewOf(item);
   const price = effectivePrice(item);
-
-  if (variant === "compact") {
-    return (
-      <CompactRow
-        item={item}
-        thumbUrl={thumb ? mediaUrl(thumb.thumbnail || thumb.url) : null}
-        price={price}
-        currencySymbol={currencySymbol}
-        qty={qty}
-        onSelect={onSelect}
-        onMedia={onMedia}
-        onAdd={onAdd}
-      />
-    );
-  }
+  const compact = variant === "compact";
 
   return (
-    // A card holds two separate actions — "tell me more" and "add one" — so it
-    // cannot itself be a button with buttons inside it (invalid, and a screen
-    // reader reads it as one confused control). The card is a plain box; the
-    // "details" button is stretched invisibly across it, and the controls that
-    // must stay clickable are lifted above it.
-    <div className="group relative flex w-full items-stretch gap-3 rounded-xl border border-neutral-200 bg-white/70 p-2.5 text-left transition hover:border-neutral-300 hover:bg-white">
+    // A card holds three separate actions — "tell me more", "show me the
+    // photo" and "add one" — so it cannot itself be a button with buttons
+    // inside it (invalid, and a screen reader reads it as one confused
+    // control). The card is a plain box; the "details" button is stretched
+    // invisibly across it, and the controls that must stay clickable are
+    // lifted above it.
+    <div
+      className={
+        compact
+          ? "group relative grid h-full w-full grid-cols-[1fr_auto] items-start gap-1.5 rounded-lg border border-neutral-200 bg-white/70 p-2 text-left shadow-sm transition hover:border-neutral-300 hover:bg-white"
+          : "group relative grid w-full grid-cols-[1fr_auto] items-start gap-2 rounded-[10px] border border-neutral-200 bg-white/70 p-2.5 text-left shadow-sm transition hover:border-neutral-300 hover:bg-white"
+      }
+    >
       <button
         type="button"
         onClick={() => onSelect(item)}
         aria-label={`${item.name}, ${formatPrice(currencySymbol, price)}. See details`}
-        className="absolute inset-0 z-10 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-highlightColor"
+        className={`absolute inset-0 z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlightColor ${
+          compact
+            ? "rounded-lg focus-visible:outline-offset-1"
+            : "rounded-[10px] focus-visible:outline-offset-2"
+        }`}
       />
-      {thumb && (
-        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mediaUrl(thumb.thumbnail || thumb.url)}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        </div>
-      )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-start gap-1.5">
-          <span className="truncate font-titleFont font-semibold text-titleColor">
+      {/* LEFT SIDE — title, price, description. Without a photo there is
+          nothing under the floating add button, so the words reserve its
+          corner themselves. */}
+      <div className={`flex min-w-0 flex-col ${preview ? "" : "pr-9"}`}>
+        <span className="flex items-start gap-1.5">
+          <span
+            className={
+              compact
+                ? "line-clamp-2 min-w-0 font-titleFont text-[11px] font-semibold leading-[14px] text-titleColor"
+                : "min-w-0 truncate font-titleFont font-semibold text-titleColor"
+            }
+          >
             {item.name}
           </span>
-          <CompactBadges item={item} size={22} />
-        </div>
-        {item.shortDesc && (
-          <span className="mt-0.5 line-clamp-2 font-descriptionFont text-xs text-disableTextColor">
-            {item.shortDesc}
-          </span>
-        )}
-        <div className="mt-auto flex items-center gap-2 pt-1">
-          <span className="font-titleFont font-semibold text-titleColor">
+          <CompactBadges item={item} size={compact ? 11 : 22} />
+        </span>
+
+        <span
+          className={`flex items-center gap-1.5 ${compact ? "mt-[1px]" : "mt-1"}`}
+        >
+          <span
+            className={
+              compact
+                ? "font-titleFont text-[11.5px] font-semibold leading-[16px] tabular-nums text-titleColor"
+                : "font-titleFont font-semibold tabular-nums text-titleColor"
+            }
+          >
             {formatPrice(currencySymbol, price)}
           </span>
           {hasDiscount(item) && (
-            <span className="font-titleFont text-xs text-disableTextColor line-through">
+            <span
+              className={`font-titleFont tabular-nums text-disableTextColor line-through ${
+                compact ? "text-[9px]" : "text-xs"
+              }`}
+            >
               {formatPrice(currencySymbol, item.price)}
             </span>
           )}
-          {hasMedia(item) && (
-            <button
-              type="button"
-              aria-label={`View ${item.media?.some((m) => m.type === "video") ? "video" : "photo"} of ${item.name}`}
-              onClick={() => onMedia(item)}
-              className="relative z-20 ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-neutral-100 px-2 text-xs text-titleColor hover:bg-neutral-200"
-            >
-              {item.media?.some((m) => m.type === "video") ? "▶" : "📷"}
-            </button>
-          )}
-        </div>
+        </span>
+
+        {/* The description face is a Thin weight, so it needs size and
+            contrast to stay readable at card scale — the web menu sets the
+            same face at 14px/tracking-wide for exactly this reason. */}
+        {item.shortDesc && (
+          <span
+            className={
+              compact
+                ? "mt-[1px] line-clamp-2 font-descriptionFont text-[10px] leading-[13px] tracking-wide text-descriptionColor"
+                : "mt-1 line-clamp-2 font-descriptionFont text-[13.5px] leading-[18px] tracking-wide text-descriptionColor"
+            }
+          >
+            {item.shortDesc}
+          </span>
+        )}
       </div>
 
+      {/* RIGHT SIDE — the photo, and the only way into the lightbox. */}
+      {preview && (
+        <button
+          type="button"
+          onClick={() => onMedia(item)}
+          aria-label={`View ${preview.isVideo ? "video" : "photo"} of ${item.name}`}
+          className={`relative z-20 flex flex-shrink-0 items-center justify-center overflow-hidden bg-neutral-100 ${
+            compact ? "h-[52px] w-[68px] rounded-md" : "h-24 w-32 rounded-lg"
+          }`}
+        >
+          {preview.src && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview.src}
+              alt=""
+              loading="lazy"
+              className="h-full w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          )}
+          {preview.isVideo && (
+            <span
+              className={`absolute flex items-center justify-center rounded-full bg-black/55 text-white ${
+                compact ? "h-5 w-5 text-[8px]" : "h-8 w-8 text-xs"
+              }`}
+            >
+              ▶
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Floating add control — over the photo's corner, the way the web
+          menu's stepper sits. The drawn circle stays small so it never
+          crowds the picture; the `after` box is the target the thumb
+          actually hits (36 design px in compact, which is 45 CSS px at the
+          smallest scale a page is ever drawn at — MIN_PAGE_SCALE = 1.25). */}
       <button
         type="button"
         aria-label={`Add ${item.name} to your order`}
@@ -126,11 +200,21 @@ function ItemCard({
           });
           onAdd(item);
         }}
-        className="relative z-20 flex h-9 w-9 flex-shrink-0 items-center justify-center self-center rounded-full border border-highlightColor text-lg text-highlightColor transition after:absolute after:-inset-1 after:content-['']"
+        className={`absolute z-20 flex flex-shrink-0 items-center justify-center rounded-full border border-highlightColor bg-white/90 text-highlightColor shadow-sm transition after:absolute after:content-[''] hover:bg-white ${
+          compact
+            ? "right-[5px] top-[5px] h-[18px] w-[18px] after:-inset-[9px]"
+            : "right-1.5 top-1.5 h-9 w-9 text-lg after:-inset-1"
+        }`}
       >
-        <FaPlus className="text-base" />
+        <FaPlus className={compact ? "text-[8px]" : "text-base"} />
         {qty > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-highlightColor px-1 font-titleFont text-[10px] font-bold text-white">
+          <span
+            className={`absolute flex items-center justify-center rounded-full bg-highlightColor font-titleFont font-bold leading-none text-white ${
+              compact
+                ? "-right-1 -top-1 h-[13px] min-w-[13px] px-[3px] text-[8px]"
+                : "-right-1 -top-1 h-5 min-w-5 px-1 text-[10px]"
+            }`}
+          >
             {qty}
           </span>
         )}
@@ -140,122 +224,6 @@ function ItemCard({
 }
 
 export default memo(ItemCard);
-
-/**
- * The same card, sized to sit two-up on a flipbook page. The paddings and
- * line-heights here are what lib/layout.ts costs a card at when it fills a
- * page — change one without the other and pages over- or under-fill.
- */
-function CompactRow({
-  item,
-  thumbUrl,
-  price,
-  currencySymbol,
-  qty,
-  onSelect,
-  onMedia,
-  onAdd,
-}: {
-  item: MenuItem;
-  thumbUrl: string | null;
-  price: number;
-  currencySymbol: string;
-  qty: number;
-  onSelect: (item: MenuItem) => void;
-  onMedia: (item: MenuItem) => void;
-  onAdd: (item: MenuItem) => void;
-}) {
-  return (
-    // Same structure as the list card: a plain box, a stretched "details"
-    // button behind the content, and the real controls above it. The paddings,
-    // sizes and line-heights below are what lib/layout.ts costs a card at —
-    // this restructure deliberately adds no box that takes up space.
-    <div className="group relative flex h-full w-full flex-col rounded-lg border border-neutral-200 bg-white/70 p-2 text-left transition hover:border-neutral-300 hover:bg-white">
-      <button
-        type="button"
-        onClick={() => onSelect(item)}
-        aria-label={`${item.name}, ${formatPrice(currencySymbol, price)}. See details`}
-        className="absolute inset-0 z-10 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-highlightColor"
-      />
-      <span className="flex w-full gap-2">
-        {thumbUrl && (
-          // Decorative here: the photo control is the 📷 button on the price
-          // row, and a second way in would only add a tab stop per card.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbUrl}
-            alt=""
-            loading="lazy"
-            className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
-          />
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="flex items-start gap-1">
-            <span className="line-clamp-2 min-w-0 font-titleFont text-[11px] font-semibold leading-[14px] text-titleColor">
-              {item.name}
-            </span>
-            <CompactBadges item={item} />
-          </span>
-          {item.shortDesc && (
-            <span className="mt-[1px] line-clamp-2 font-descriptionFont text-[9px] leading-[12px] text-disableTextColor">
-              {item.shortDesc}
-            </span>
-          )}
-        </span>
-      </span>
-
-      <span className="mt-auto flex w-full items-center gap-1.5 pt-1">
-        <span className="font-titleFont text-[11.5px] font-semibold leading-[18px] tabular-nums text-titleColor">
-          {formatPrice(currencySymbol, price)}
-        </span>
-        {hasDiscount(item) && (
-          <span className="font-titleFont text-[9px] tabular-nums text-disableTextColor line-through">
-            {formatPrice(currencySymbol, item.price)}
-          </span>
-        )}
-        {hasMedia(item) && (
-          <button
-            type="button"
-            aria-label={`View ${item.media?.some((m) => m.type === "video") ? "video" : "photo"} of ${item.name}`}
-            onClick={() => onMedia(item)}
-            // Grown to a 36 design px target without changing the 16px the row
-            // is laid out around — same reasoning as the add button below.
-            className="relative z-20 inline-flex h-[16px] items-center after:absolute after:-inset-[10px] after:content-['']"
-          >
-            {item.media?.some((m) => m.type === "video") ? "▶" : "📷"}
-          </button>
-        )}
-
-        <button
-          type="button"
-          aria-label={`Add ${item.name} to your order`}
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            flyToCart({
-              x: r.left + r.width / 2,
-              y: r.top + r.height / 2,
-              label: item.name,
-            });
-            onAdd(item);
-          }}
-          // The drawn circle stays 18 design px — enlarging it would re-cost
-          // every row in the layout engine. The `after` box is the target the
-          // thumb actually hits: 36 design px, which is 45 CSS px at the
-          // smallest scale a page is ever drawn at (MIN_PAGE_SCALE = 1.25) and
-          // more on any larger screen.
-          className="relative z-20 ml-auto flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border border-highlightColor text-highlightColor opacity-80 transition after:absolute after:-inset-[9px] after:content-['']"
-        >
-          <FaPlus className="text-[8px]" />
-          {qty > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-[13px] min-w-[13px] items-center justify-center rounded-full bg-highlightColor px-[3px] font-titleFont text-[8px] font-bold leading-none text-white">
-              {qty}
-            </span>
-          )}
-        </button>
-      </span>
-    </div>
-  );
-}
 
 /** hot / nut / veg icons at row scale. */
 export function CompactBadges({

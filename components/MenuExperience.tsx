@@ -362,7 +362,11 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
                 : "pointer-events-none opacity-0"
             }`}
           >
-            <ViewSkeleton mode={view} portrait={portrait} />
+            <ViewSkeleton
+              mode={view}
+              portrait={portrait}
+              restaurant={menu.restaurant}
+            />
           </div>
         )}
       </main>

@@ -6,6 +6,7 @@ import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount, hasMedia } from "@/lib/menu";
 import { flyToCart } from "@/lib/flyToCart";
 import { useOverlay } from "@/lib/useOverlay";
+import { CompactBadges } from "@/components/ItemCard";
 
 interface ItemPopupProps {
   item: MenuItem;
@@ -69,9 +70,16 @@ export default function ItemPopup({
           </button>
         )}
 
-        <h3 id={titleId} className="pr-8 font-titleFont text-lg font-semibold">
-          {item.name}
-        </h3>
+        {/* Same hot / nut / veg icons the cards carry — this is the screen
+            where someone actually checks whether they can eat the dish, so it
+            must not be the one place the marks are missing. Larger than on a
+            card because there is room for them here. */}
+        <div className="flex items-start gap-2 pr-8">
+          <h3 id={titleId} className="font-titleFont text-lg font-semibold">
+            {item.name}
+          </h3>
+          <CompactBadges item={item} size={24} />
+        </div>
         {(item.longDesc || item.shortDesc) && (
           <p className="mt-1 font-descriptionFont text-sm text-descriptionColor">
             {item.longDesc || item.shortDesc}

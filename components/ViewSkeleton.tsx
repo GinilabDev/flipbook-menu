@@ -8,36 +8,66 @@
  * so both directions of the toggle feel the same.
  */
 
+import type { Restaurant } from "@/lib/menu";
+import { readableOn } from "@/lib/accent";
+
 const shimmer = "animate-pulse rounded bg-neutral-300/70";
 
-function PageSkeleton() {
-  return (
-    <div className="flex h-full min-w-0 flex-1 basis-0 flex-col gap-4 overflow-hidden bg-white p-6 shadow-book">
-      <div className={`${shimmer} h-6 w-1/2 self-center`} />
-      <div className={`${shimmer} h-3 w-1/3 self-center`} />
-      <div className="mt-4 flex flex-1 flex-col gap-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className={`${shimmer} h-12 w-12 flex-shrink-0 rounded-lg`} />
-            <div className="flex-1 space-y-2">
-              <div className={`${shimmer} h-3 w-3/4`} />
-              <div className={`${shimmer} h-2.5 w-1/2`} />
-            </div>
-            <div className={`${shimmer} h-3 w-10 flex-shrink-0`} />
-          </div>
-        ))}
-      </div>
-    </div>
+/**
+ * The book always opens on the cover, so that is what stands in for it — a
+ * spread of blank item rows was a placeholder for a page the reader never sees
+ * first. The brand colour is already known by the time this shows (the menu has
+ * loaded; it is the book that is still mounting), so the placeholder is the
+ * right colour from the start and only its contents fade in.
+ *
+ * Sized like the closed book in FlipbookViewer: one page wide, centred on a
+ * spread — see its `offsetFor`.
+ */
+function CoverSkeleton({
+  portrait,
+  restaurant,
+}: {
+  portrait: boolean;
+  restaurant?: Restaurant;
+}) {
+  const bg = restaurant?.brandColor || "#262626";
+  const fg = readableOn(bg);
+  // Bars are drawn in the cover's own text colour — a grey shimmer on a brand
+  // colour reads as a rendering fault rather than as loading.
+  const bar = (className: string, opacity = 0.18) => (
+    <div
+      className={`animate-pulse rounded ${className}`}
+      style={{ background: fg, opacity }}
+    />
   );
-}
 
-function FlipSkeleton({ portrait }: { portrait: boolean }) {
-  // Edge to edge, like the book it stands in for — anything smaller would show
-  // the placeholder resizing into place, which is what it exists to hide.
   return (
-    <div className="flex h-full w-full bg-neutral-200">
-      <PageSkeleton />
-      {!portrait && <PageSkeleton />}
+    <div className="flex h-full w-full justify-center bg-neutral-200">
+      <div
+        className={`flex h-full flex-col items-center justify-center gap-4 p-8 shadow-book ${
+          portrait ? "w-full" : "w-1/2"
+        }`}
+        style={{ background: bg }}
+      >
+        {/* logo, name, and the rule under it — the rule carries no data, so it
+            is drawn for real rather than as a bar. */}
+        {bar("h-16 w-40 max-w-[70%] rounded-lg")}
+        {bar("h-7 w-56 max-w-[80%]", 0.24)}
+        <span
+          className="h-[3px] w-14 rounded-full"
+          style={{
+            background: restaurant?.highlightColor || fg,
+            opacity: 0.9,
+          }}
+        />
+        {bar("h-3 w-44 max-w-[75%]")}
+        {bar("h-3 w-36 max-w-[65%]")}
+        {bar("h-3.5 w-28", 0.22)}
+        <div className="mt-5 flex flex-col items-center gap-2">
+          {bar("h-3.5 w-52 max-w-[80%]", 0.14)}
+          {bar("h-3 w-40 max-w-[70%]", 0.1)}
+        </div>
+      </div>
     </div>
   );
 }
@@ -75,9 +105,16 @@ function ListSkeleton() {
 export default function ViewSkeleton({
   mode,
   portrait = false,
+  restaurant,
 }: {
   mode: "flip" | "list";
   portrait?: boolean;
+  /** brand colours for the cover placeholder */
+  restaurant?: Restaurant;
 }) {
-  return mode === "flip" ? <FlipSkeleton portrait={portrait} /> : <ListSkeleton />;
+  return mode === "flip" ? (
+    <CoverSkeleton portrait={portrait} restaurant={restaurant} />
+  ) : (
+    <ListSkeleton />
+  );
 }
