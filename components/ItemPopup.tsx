@@ -41,7 +41,10 @@ export default function ItemPopup({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         role="dialog"
@@ -66,7 +69,11 @@ export default function ItemPopup({
             onClick={() => hasMedia(item) && onMedia(item)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={mediaUrl(thumb.url)} alt={item.name} className="h-full w-full object-cover" />
+            <img
+              src={mediaUrl(thumb.url)}
+              alt={item.name}
+              className="h-full w-full object-cover"
+            />
           </button>
         )}
 
@@ -87,7 +94,7 @@ export default function ItemPopup({
         )}
 
         <div className="mt-2 flex items-center gap-2">
-          <span className="font-titleFont text-xl font-bold text-highlightColor">
+          <span className="font-titleFont text-titleColor">
             {formatPrice(currencySymbol, price)}
           </span>
           {hasDiscount(item) && (
@@ -100,7 +107,9 @@ export default function ItemPopup({
               onClick={() => onMedia(item)}
               className="ml-auto rounded-full bg-neutral-100 px-3 py-1 font-descriptionFont text-xs text-titleColor hover:bg-neutral-200"
             >
-              {item.media?.some((m) => m.type === "video") ? "▶ Video" : "📷 Photos"}
+              {item.media?.some((m) => m.type === "video")
+                ? "▶ Video"
+                : "📷 Photos"}
             </button>
           )}
         </div>
