@@ -20,7 +20,13 @@ async function menuForMeta({ params, searchParams }: PageProps) {
   const sp = await searchParams;
   const table = first(sp.t) || first(sp.table);
   try {
-    return await fetchMenu(slug, table, { revalidate: 30, brandingOnly: true });
+    // Metadata has no way to show an error, so a failure here is simply a page
+    // with a generic title — the client below is what explains it.
+    const result = await fetchMenu(slug, table, {
+      revalidate: 30,
+      brandingOnly: true,
+    });
+    return result.ok ? result.menu : null;
   } catch {
     return null;
   }
