@@ -439,12 +439,28 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
               {bookPages}
             </HTMLFlipBook>
 
+            {/* Phone only: a soft shade along the foot of the page, under the
+                arrows. They are drawn straight onto the page, so on a white
+                card the dark glyph had nothing to sit on and read as part of
+                the menu; this gives the strip they live in a floor. A spread
+                doesn't need it — the arrows there are out at the book's outer
+                corners, clear of the cards. */}
+            {portrait && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 rounded-b-[6px] bg-gradient-to-t from-black/[0.14] via-black/[0.05] to-transparent"
+              />
+            )}
+
             {/* Heyzine-style page arrows, overlaid on the page's inner bottom
                 corners. */}
+            {/* The chip is what makes them read as controls: the bare glyph was
+                a dark mark drawn straight onto the menu — invisible against the
+                cover's brand colour, and easy to miss on a busy page. */}
             <button
               onClick={flipPrev}
               aria-label="Previous page"
-              className={`group absolute bottom-2 left-2 z-20 transition sm:bottom-3 sm:left-3 ${onCover ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              className={`hz-arrow-btn group absolute bottom-2 left-2 z-20 sm:bottom-3 sm:left-3 ${onCover ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               <span className="hz-arrow" />
             </button>
@@ -452,7 +468,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
               onClick={flipNext}
               disabled={current >= total - 1}
               aria-label="Next page"
-              className={`group absolute bottom-2 right-2 z-20 transition sm:bottom-3 sm:right-3 ${current >= total - 1 ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              className={`hz-arrow-btn group absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3 ${current >= total - 1 ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               <span className="hz-arrow hz-arrow--flip" />
             </button>

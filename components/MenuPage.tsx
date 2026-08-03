@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { FaFacebookF, FaGoogle, FaInstagram } from "react-icons/fa6";
 import type { LayoutPage, PageBlock } from "@/lib/layout";
 import { PAGE_H, PAGE_W } from "@/lib/layout";
@@ -208,9 +208,7 @@ function MenuPage({
           </span>
         </div>
         {category.description && (
-          <p className="mt-0.5 line-clamp-1 font-descriptionFont text-[9.5px] italic leading-[12px] text-disableTextColor">
-            {category.description}
-          </p>
+          <CategoryDescription text={category.description} />
         )}
         <div
           className="mt-1.5 h-[2px] rounded-full"
@@ -233,6 +231,62 @@ function MenuPage({
 }
 
 export default memo(MenuPage);
+
+/**
+ * The category's blurb, held to one line with a more/less toggle.
+ *
+ * A page is a fixed rectangle, so a three-line description would take that
+ * space from the dishes — but truncating it outright loses whatever the
+ * restaurant wrote about the section. Clamped by default, opened on demand.
+ *
+ * The toggle only appears when the text actually doesn't fit: with a one-line
+ * description it would be a control that does nothing. `clipped` is measured
+ * only while collapsed — once open the paragraph fits itself by definition, and
+ * measuring then would delete the button the reader just used.
+ */
+function CategoryDescription({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [clipped, setClipped] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (open) return;
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setClipped(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    // The page is re-laid out on rotate and on every resize of the stage, and
+    // a description that fitted at one page width need not at another.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text, open]);
+
+  return (
+    <div className="mt-0.5 flex items-start gap-1.5">
+      <p
+        ref={ref}
+        className={`min-w-0 flex-1 font-descriptionFont text-[11.5px] leading-[14px] text-disableTextColor ${
+          open ? "" : "line-clamp-1"
+        }`}
+      >
+        {text}
+      </p>
+      {clipped && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          // Drawn at the size of the line it sits on; the `after` box is the
+          // 32-design-px target a thumb actually lands on.
+          className="relative flex-shrink-0 font-titleFont text-[10px] font-semibold leading-[14px] text-titleColor  after:absolute after:-inset-[9px] after:content-['']"
+        >
+          {open ? "less" : "more"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 /**
  * The page's block stack — the whole category, however long. The page itself is
@@ -297,7 +351,20 @@ function SectionBody({
                   )
                 }
               />
-              {open && <div className="mt-1.5">{grid(block.items)}</div>}
+              {/* The open group's items live INSIDE the heading's panel —
+                  same accent border, no gap, a tint behind them — so a white
+                  card under a white card is no longer the only thing telling
+                  the reader these seven dishes are the Garlic Chilli ones. */}
+              {open && (
+                <div
+                  className="rounded-b-lg p-1.5"
+                  style={{
+                    background: "color-mix(in srgb, var(--main-color) 6%, white)",
+                  }}
+                >
+                  {grid(block.items)}
+                </div>
+              )}
             </div>
           );
         })}
@@ -406,9 +473,12 @@ function SubcategoryHead({
             }
           : undefined
       }
+      // Open: it stops being a row in the list and becomes the lid of the panel
+      // below it — square bottom, and stuck to the top of the scroller so the
+      // name is still there seven dishes down. Closed: an ordinary row.
       className={`w-full rounded-lg border px-2.5 py-1.5 text-left shadow-sm transition ${
         open
-          ? ""
+          ? "sticky top-0 z-30 rounded-b-none"
           : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-100"
       }`}
     >

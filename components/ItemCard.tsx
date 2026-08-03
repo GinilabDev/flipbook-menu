@@ -6,6 +6,7 @@ import type { MenuItem } from "@/lib/menu";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/menu";
 import { flyToCart } from "@/lib/flyToCart";
 import { useItemQty } from "@/lib/cart";
+import ImageWithLoader from "@/components/ImageWithLoader";
 import { FaPlus } from "react-icons/fa6";
 
 interface ItemCardProps {
@@ -163,12 +164,14 @@ function ItemCard({
           }`}
         >
           {preview.src && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ImageWithLoader
               src={preview.src}
               alt=""
-              loading="lazy"
+              wrapperClassName="h-full w-full"
               className="h-full w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover:scale-105"
+              spinnerClassName={
+                compact ? "h-4 w-4 border-2" : "h-6 w-6 border-2"
+              }
             />
           )}
           {preview.isVideo && (
@@ -202,11 +205,16 @@ function ItemCard({
         }}
         className={`absolute z-20 flex flex-shrink-0 items-center justify-center rounded-full border border-highlightColor bg-white/90 text-highlightColor shadow-sm transition after:absolute after:content-[''] hover:bg-white ${
           compact
-            ? "right-[5px] top-[5px] h-[18px] w-[18px] after:-inset-[9px]"
+            ? // A phone shows one page where a spread shows two, so a card is
+              // twice as wide there and can carry a slightly larger control —
+              // the same 36 design px target either way, just drawn bigger.
+              "right-[5px] top-[5px] h-[18px] w-[18px] after:-inset-[9px] max-md:h-[21px] max-md:w-[21px] max-md:after:-inset-[8px]"
             : "right-1.5 top-1.5 h-9 w-9 text-lg after:-inset-1"
         }`}
       >
-        <FaPlus className={compact ? "text-[8px]" : "text-base"} />
+        <FaPlus
+          className={compact ? "text-[8px] max-md:text-[9.5px]" : "text-base"}
+        />
         {qty > 0 && (
           <span
             className={`absolute flex items-center justify-center rounded-full bg-highlightColor font-titleFont font-bold leading-none text-white ${

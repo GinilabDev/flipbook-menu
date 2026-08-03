@@ -190,9 +190,35 @@ body {
 }
 
 /* Page-change arrows using the Heyzine icon sprite (recoloured via CSS mask) */
+
+/* The arrow's hit area — no plate behind it: the glyph sits directly on the
+   page, and the target is simply larger than what is drawn. */
+.hz-arrow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  transition:
+    opacity 0.2s ease,
+    transform 0.15s ease;
+}
+.hz-arrow-btn:active {
+  transform: scale(0.94);
+}
+@media (min-width: 640px) {
+  .hz-arrow-btn {
+    width: 50px;
+    height: 50px;
+  }
+}
+
 .hz-arrow {
   display: block;
-  --k: 0.72; /* mobile scale of the 44px design → smaller on phones */
+  /* Glyph scale off the 44px design, sized to leave a margin inside the chip
+     above. 0.72 (32px, and no chip) was both under every touch-target
+     guideline and easy to lose against the page. */
+  --k: 0.82;
   width: calc(44px * var(--k));
   height: calc(44px * var(--k));
   background-color: #262626; /* always active, no hover needed */
@@ -205,10 +231,15 @@ body {
   -webkit-mask-position: calc(-270px * var(--k)) 0;
   mask-position: calc(-270px * var(--k)) 0;
   transition: transform 0.2s ease;
+  /* What replaces the plate: a light halo lifts the dark glyph off a white
+     card, and the soft drop keeps its edge where the page behind it is busy or
+     brand-coloured. */
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85))
+    drop-shadow(0 1px 3px rgba(15, 23, 42, 0.35));
 }
 @media (min-width: 640px) {
   .hz-arrow {
-    --k: 1; /* full size on tablet/desktop */
+    --k: 0.95; /* near full size on tablet/desktop, inside the 50px chip */
   }
 }
 .hz-arrow--flip {
