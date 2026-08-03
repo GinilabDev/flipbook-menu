@@ -3,7 +3,8 @@
 //   • page 0        = cover
 //   • each category = EXACTLY ONE page: a section header, then a vertical stack
 //                     of blocks (full-width subcategory headings, and rows of
-//                     item cards — 2-up on a book, 1-up on a phone). A category
+//                     item cards — 2-up on a page with the room for it, 1-up on
+//                     a phone; see `itemsPerRowFor`). A category
 //                     never spills onto a second page; a long one simply scrolls
 //                     inside its own page.
 //   • last page     = back cover
@@ -92,7 +93,7 @@ export type LayoutPage =
   | { kind: "blank"; key: string };
 
 export interface LayoutOptions {
-  /** item cards per row — 2 on a wide book, 1 on a phone */
+  /** item cards per row — see `itemsPerRowFor` */
   itemsPerRow: number;
 }
 
@@ -188,10 +189,33 @@ export function categoryIdAtPage(
 }
 
 /**
- * Cards per row: two on a book spread, one on a phone — where a page is only
- * half as wide on screen, so two-up cards get cramped. Must match the portrait
- * breakpoint FlipbookViewer uses, or the grid and the flow disagree.
+ * The narrowest page, in design px, that may carry two cards side by side.
+ *
+ * A compact card spends a fixed 90 design px on its photo, its padding and the
+ * gap between the two, so everything below this leaves the dish name a sliver:
+ * at PAGE_W the name gets ~97px, at 330 it gets ~65 and "Garlic Mushroom Pilau"
+ * truncates in the middle. Set just under the reference page, so a page has to
+ * be close to the size these cards were drawn for before it is packed two-up.
  */
-export function itemsPerRowFor(portrait: boolean): number {
-  return portrait ? 1 : 2;
+export const MIN_TWO_UP_PAGE_W = 380;
+
+/**
+ * Cards per row, from how wide the page will actually be drawn.
+ *
+ * Not from the device: a page is one thing on a spread and another on a single
+ * page, and the same 768px screen produces both. What matters is the width the
+ * page ends up with in design space — which is the screen width it is given
+ * divided by the scale its height earns it (see `pageScaleFor`). Two narrow
+ * pages of a spread on a tablet held upright therefore fall to one-up, exactly
+ * as a phone does, instead of cramming two cards into 240 design px.
+ *
+ * @param pageWidthPx  the page's width on screen (stage width ÷ pages shown)
+ * @param stageHeightPx  the stage's height on screen
+ */
+export function itemsPerRowFor(
+  pageWidthPx: number,
+  stageHeightPx: number,
+): number {
+  const designWidth = pageWidthPx / pageScaleFor(stageHeightPx);
+  return designWidth >= MIN_TWO_UP_PAGE_W ? 2 : 1;
 }

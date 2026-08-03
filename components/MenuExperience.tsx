@@ -5,12 +5,11 @@ import type { Menu, MenuItem } from "@/lib/menu";
 import {
   buildPages,
   categoryIdAtPage,
-  itemsPerRowFor,
   pageIndexOfCategory,
 } from "@/lib/layout";
 import { mediaUrl } from "@/lib/config";
 import { useCartActions } from "@/lib/cart";
-import { useIsPortrait } from "@/lib/useViewport";
+import { useBookLayout } from "@/lib/useViewport";
 import type { FlipbookHandle } from "@/components/FlipbookViewer";
 import FlipbookViewer from "@/components/FlipbookViewer";
 import CategoryModal from "@/components/CategoryModal";
@@ -30,7 +29,7 @@ const SKELETON_TIMEOUT_MS = 2500;
 
 export default function MenuExperience({ menu }: { menu: Menu }) {
   const { add } = useCartActions();
-  const portrait = useIsPortrait();
+  const { singlePage, itemsPerRow } = useBookLayout();
   const [view, setView] = useState<ViewMode>("flip");
   const [popupItem, setPopupItem] = useState<MenuItem | null>(null);
   const [mediaItem, setMediaItem] = useState<MenuItem | null>(null);
@@ -47,9 +46,12 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
 
   const sym = menu.restaurant.currencySymbol;
 
+  // Rebuilt only when the *derived* layout changes — an address bar sliding
+  // away moves the viewport but not `itemsPerRow`, and re-flowing 40 categories
+  // for that is work nobody sees. See lib/useViewport.ts.
   const pages = useMemo(
-    () => buildPages(menu, { itemsPerRow: itemsPerRowFor(portrait) }),
-    [menu, portrait],
+    () => buildPages(menu, { itemsPerRow }),
+    [menu, itemsPerRow],
   );
 
   // ---- Categories ----
@@ -94,14 +96,14 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
 
   // In the book, the visible page *is* the category. A landscape spread shows
   // two, and its left one can be the cover or the blank filler — so fall
-  // through to the right page there, but never on a phone's single page.
+  // through to the right page there, but never when one page is all there is.
   const handlePageChange = useCallback(
     (index: number) =>
       setActiveCategoryId(
         categoryIdAtPage(pages, index) ??
-          (portrait ? null : categoryIdAtPage(pages, index + 1)),
+          (singlePage ? null : categoryIdAtPage(pages, index + 1)),
       ),
-    [pages, portrait],
+    [pages, singlePage],
   );
 
   // In the list, whichever section heading has passed the top of the viewport.
@@ -364,7 +366,7 @@ export default function MenuExperience({ menu }: { menu: Menu }) {
           >
             <ViewSkeleton
               mode={view}
-              portrait={portrait}
+              singlePage={singlePage}
               restaurant={menu.restaurant}
             />
           </div>

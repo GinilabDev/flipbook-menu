@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import type { LayoutPage } from "@/lib/layout";
 import { pageScaleFor } from "@/lib/layout";
 import type { MenuItem } from "@/lib/menu";
-import { useIsPortrait } from "@/lib/useViewport";
+import { useIsSinglePage } from "@/lib/useViewport";
 import MenuPage from "@/components/MenuPage";
 
 // react-pageflip touches `window` on import → load client-side only.
@@ -135,7 +135,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   const currentRef = useRef(0);
   // Where the book *will* sit once the turn in flight lands.
   const slideRefIdx = useRef(0);
-  const portrait = useIsPortrait();
+  const singlePage = useIsSinglePage();
   const [dims, setDims] = useState({ width: 380, height: 528 });
   const [measured, setMeasured] = useState(false);
   const nearStore = useMemo(createNearStore, []);
@@ -150,13 +150,13 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   const recomputeSize = useCallback(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const perRow = portrait ? 1 : 2;
+    const perRow = singlePage ? 1 : 2;
     setDims({
       width: Math.max(240, Math.floor(stage.clientWidth / perRow)),
       height: Math.max(320, Math.floor(stage.clientHeight)),
     });
     setMeasured(true);
-  }, [portrait]);
+  }, [singlePage]);
 
   useEffect(() => {
     recomputeSize();
@@ -185,12 +185,12 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   // centred on screen and the book slides out from under them as it opens.
   const offsetFor = useCallback(
     (idx: number) => {
-      if (portrait) return 0;
+      if (singlePage) return 0;
       if (idx <= 0) return -dims.width / 2; // front cover: lone right-hand page
       if (idx >= total - 1) return dims.width / 2; // back cover: lone left page
       return 0;
     },
-    [portrait, dims.width, total],
+    [singlePage, dims.width, total],
   );
 
   /**
@@ -211,9 +211,9 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
       // told to build itself. Notifying the store re-renders only the pages
       // whose answer changed — the viewer itself does not re-render, which is
       // the whole point of writing the transform above by hand.
-      nearStore.set(currentRef.current, idx, portrait ? 2 : 3);
+      nearStore.set(currentRef.current, idx, singlePage ? 2 : 3);
     },
-    [offsetFor, nearStore, portrait],
+    [offsetFor, nearStore, singlePage],
   );
 
   // Re-assert it whenever the answer changes — a resize, or a rotate. That also
@@ -248,8 +248,8 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
   // A category jump moves the reader without a turn, so `slideTo` alone would
   // leave the store believing they are still where they were.
   useEffect(() => {
-    nearStore.set(current, slideRefIdx.current, portrait ? 2 : 3);
-  }, [nearStore, current, portrait]);
+    nearStore.set(current, slideRefIdx.current, singlePage ? 2 : 3);
+  }, [nearStore, current, singlePage]);
 
   // Jumping to a category's page.
   //
@@ -350,11 +350,11 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
     () =>
       pages.map((p, i) => (
         // The spine shadow marks the page's inner edge. On a spread that
-        // alternates — left page, right page. A phone shows one page at a time
-        // with the spine always down its left side, so every page there is a
-        // "right" page; alternating would flip the shadow to the outer edge on
-        // every other turn.
-        <Page key={p.key} side={portrait || i % 2 === 0 ? "right" : "left"}>
+        // alternates — left page, right page. A single-page book shows one page
+        // at a time with the spine always down its left side, so every page
+        // there is a "right" page; alternating would flip the shadow to the
+        // outer edge on every other turn.
+        <Page key={p.key} side={singlePage || i % 2 === 0 ? "right" : "left"}>
           {/* Pages are authored in design px and scaled to the book, so type
               keeps its size and proportions at any screen size. */}
           <div
@@ -381,7 +381,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
       )),
     [
       pages,
-      portrait,
+      singlePage,
       designWidth,
       scale,
       currencySymbol,
@@ -406,7 +406,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
             ref={slideRef}
             className="relative transition-transform duration-700 ease-in-out"
             style={{
-              width: (portrait ? 1 : 2) * dims.width,
+              width: (singlePage ? 1 : 2) * dims.width,
               height: dims.height,
               // Read from the ref so a re-render mid-turn re-states where the
               // book is *going*, not where it was when the turn began.
@@ -415,7 +415,7 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
           >
             {/* @ts-expect-error react-pageflip types are loose under dynamic import */}
             <HTMLFlipBook
-              key={portrait ? "portrait" : "landscape"}
+              key={singlePage ? "single" : "spread"}
               ref={bookRef}
               width={dims.width}
               height={dims.height}
@@ -432,20 +432,20 @@ const FlipbookViewer = forwardRef<FlipbookHandle, FlipbookViewerProps>(function 
               useMouseEvents={false}
               clickEventForward={false}
               swipeDistance={20}
-              usePortrait={portrait}
+              usePortrait={singlePage}
               mobileScrollSupport
               onFlip={onFlip}
             >
               {bookPages}
             </HTMLFlipBook>
 
-            {/* Phone only: a soft shade along the foot of the page, under the
-                arrows. They are drawn straight onto the page, so on a white
-                card the dark glyph had nothing to sit on and read as part of
-                the menu; this gives the strip they live in a floor. A spread
+            {/* Single page only: a soft shade along the foot of the page,
+                under the arrows. They are drawn straight onto the page, so on a
+                white card the dark glyph had nothing to sit on and read as part
+                of the menu; this gives the strip they live in a floor. A spread
                 doesn't need it — the arrows there are out at the book's outer
                 corners, clear of the cards. */}
-            {portrait && (
+            {singlePage && (
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 rounded-b-[6px] bg-gradient-to-t from-black/[0.14] via-black/[0.05] to-transparent"

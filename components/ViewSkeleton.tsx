@@ -24,10 +24,10 @@ const shimmer = "animate-pulse rounded bg-neutral-300/70";
  * spread — see its `offsetFor`.
  */
 function CoverSkeleton({
-  portrait,
+  singlePage,
   restaurant,
 }: {
-  portrait: boolean;
+  singlePage: boolean;
   restaurant?: Restaurant;
 }) {
   const bg = restaurant?.brandColor || "#262626";
@@ -45,7 +45,7 @@ function CoverSkeleton({
     <div className="flex h-full w-full justify-center bg-neutral-200">
       <div
         className={`flex h-full flex-col items-center justify-center gap-4 p-8 shadow-book ${
-          portrait ? "w-full" : "w-1/2"
+          singlePage ? "w-full" : "w-1/2"
         }`}
         style={{ background: bg }}
       >
@@ -104,16 +104,16 @@ function ListSkeleton() {
 
 export default function ViewSkeleton({
   mode,
-  portrait = false,
+  singlePage = false,
   restaurant,
 }: {
   mode: "flip" | "list";
-  portrait?: boolean;
+  singlePage?: boolean;
   /** brand colours for the cover placeholder */
   restaurant?: Restaurant;
 }) {
   return mode === "flip" ? (
-    <CoverSkeleton portrait={portrait} restaurant={restaurant} />
+    <CoverSkeleton singlePage={singlePage} restaurant={restaurant} />
   ) : (
     <ListSkeleton />
   );
